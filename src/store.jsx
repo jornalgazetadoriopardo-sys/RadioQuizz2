@@ -1,136 +1,104 @@
-import { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
-import { STORAGE_KEY } from './config.js'
-import { ouvintesSeed, patrocinadoresSeed, premiosSeed, rodadasSeed } from './data/seed.js'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useAuth } from './auth.jsx'
+import { supabase } from './supabase.js'
 
-const estadoInicial = () => ({
-  usuario: null, // { nome, pontos }
-  rodadas: rodadasSeed,
-  patrocinadores: patrocinadoresSeed,
-  premios: premiosSeed,
-  ouvintes: ouvintesSeed,
-  respostas: {}, // { [rodadaId]: { alternativa, acertou, pontos, tempoGasto } }
-  rodadaNoAr: null, // id escolhido pelo admin; null = próxima não respondida
-  modoApresentacao: false,
-})
+const DataContext = createContext(null)
 
-function carregar() {
-  try {
-    const salvo = localStorage.getItem(STORAGE_KEY)
-    if (salvo) return { ...estadoInicial(), ...JSON.parse(salvo) }
-  } catch {
-    // localStorage indisponível (aba anônima, etc.) — segue com o estado padrão
-  }
-  return estadoInicial()
+// Tabelas carregadas por todos e atualizadas em tempo real quando o admin muda algo.
+const CONSULTAS = {
+  rodadas: () => supabase.from('rodadas').select('*').order('horario'),
+  patrocinadores: () => supabase.from('patrocinadores').select('*').eq('ativo', true).order('criado_em'),
+  premios: () => supabase.from('premios').select('*').order('colocacao'),
+  configuracoes: () => supabase.from('configuracoes').select('*').eq('id', 1).maybeSingle(),
 }
 
-const arred = (n) => Math.round(n * 100) / 100
+export function DataProvider({ children }) {
+  const { sessao } = useAuth()
+  const usuarioId = sessao?.user?.id
+  const [dados, setDados] = useState({ rodadas: [], patrocinadores: [], premios: [], configuracoes: null })
+  const [minhasRespostas, setMinhasRespostas] = useState({})
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState(null)
 
-function reducer(state, action) {
-  switch (action.type) {
-    case 'SET_USUARIO':
-      return { ...state, usuario: { nome: action.nome, pontos: state.usuario?.pontos ?? 0 } }
+  const recarregar = useCallback(async (tabela) => {
+    const { data, error } = await CONSULTAS[tabela]()
+    if (error) return setErro(error)
+    setDados((d) => ({ ...d, [tabela]: data }))
+  }, [])
 
-    case 'REGISTRAR_RESPOSTA': {
-      if (state.respostas[action.rodadaId]) return state
-      const resposta = { alternativa: action.alternativa, acertou: action.acertou, pontos: action.pontos, tempoGasto: action.tempoGasto }
-      return {
-        ...state,
-        respostas: { ...state.respostas, [action.rodadaId]: resposta },
-        usuario: { ...state.usuario, pontos: arred((state.usuario?.pontos ?? 0) + action.pontos) },
-      }
-    }
-
-    case 'UPSERT': {
-      const lista = state[action.colecao]
-      const existe = lista.some((i) => i.id === action.item.id)
-      return {
-        ...state,
-        [action.colecao]: existe ? lista.map((i) => (i.id === action.item.id ? action.item : i)) : [...lista, action.item],
-      }
-    }
-
-    case 'REMOVER':
-      return {
-        ...state,
-        [action.colecao]: state[action.colecao].filter((i) => i.id !== action.id),
-        rodadaNoAr: state.rodadaNoAr === action.id ? null : state.rodadaNoAr,
-      }
-
-    case 'SET_NO_AR': {
-      // Colocar uma rodada no ar libera a resposta de novo (útil para repetir no demo).
-      const { [action.id]: _, ...respostas } = state.respostas
-      const pontosRemovidos = state.respostas[action.id]?.pontos ?? 0
-      return {
-        ...state,
-        rodadaNoAr: action.id,
-        respostas,
-        usuario: state.usuario && { ...state.usuario, pontos: arred(state.usuario.pontos - pontosRemovidos) },
-      }
-    }
-
-    case 'TOGGLE_APRESENTACAO':
-      return { ...state, modoApresentacao: !state.modoApresentacao }
-
-    case 'ZERAR_SEMANA':
-      return {
-        ...state,
-        respostas: {},
-        rodadaNoAr: null,
-        ouvintes: state.ouvintes.map((o) => ({ ...o, pontos: 0 })),
-        usuario: state.usuario && { ...state.usuario, pontos: 0 },
-      }
-
-    case 'RESET':
-      return estadoInicial()
-
-    default:
-      return state
-  }
-}
-
-const StoreContext = createContext(null)
-
-export function StoreProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, undefined, carregar)
+  const recarregarMinhasRespostas = useCallback(async () => {
+    if (!usuarioId) return
+    const { data } = await supabase.from('respostas').select('*').eq('usuario_id', usuarioId)
+    setMinhasRespostas(Object.fromEntries((data ?? []).map((r) => [r.rodada_id, r])))
+  }, [usuarioId])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-    } catch {
-      // ignora: o demo funciona sem persistência
+    if (!usuarioId) return
+    let ativo = true
+    setCarregando(true)
+    Promise.all([...Object.keys(CONSULTAS).map(recarregar), recarregarMinhasRespostas()]).finally(() => ativo && setCarregando(false))
+
+    // Tempo real: quando o admin solta uma pergunta, todos os celulares recebem na hora.
+    const canal = supabase.channel('quiz')
+    for (const tabela of Object.keys(CONSULTAS)) {
+      canal.on('postgres_changes', { event: '*', schema: 'public', table: tabela }, () => {
+        recarregar(tabela)
+        // Ao recolocar uma rodada no ar, o admin pode ter apagado respostas antigas.
+        if (tabela === 'rodadas') recarregarMinhasRespostas()
+      })
     }
-  }, [state])
+    canal.subscribe()
 
-  const derivados = useMemo(() => {
-    const { rodadas, respostas, rodadaNoAr, ouvintes, usuario } = state
-    const ordenadas = [...rodadas].sort((a, b) => a.horario.localeCompare(b.horario))
-    const atual =
-      ordenadas.find((r) => r.id === rodadaNoAr) ??
-      ordenadas.find((r) => !respostas[r.id]) ??
-      ordenadas[ordenadas.length - 1] ??
-      null
-    const idx = atual ? ordenadas.indexOf(atual) : -1
-    const proxima = ordenadas.slice(idx + 1).find((r) => !respostas[r.id]) ?? null
+    // Rede de segurança: se o tempo real cair (celular em segundo plano), atualiza ao voltar para o app.
+    const aoVoltar = () => document.visibilityState === 'visible' && recarregar('rodadas')
+    document.addEventListener('visibilitychange', aoVoltar)
 
-    const ranking = [...ouvintes, ...(usuario ? [{ id: 'eu', nome: usuario.nome, pontos: usuario.pontos, eu: true }] : [])]
-      .sort((a, b) => b.pontos - a.pontos)
-      .map((o, i) => ({ ...o, posicao: i + 1 }))
-    const minhaPosicao = ranking.find((o) => o.eu)?.posicao ?? null
+    return () => {
+      ativo = false
+      supabase.removeChannel(canal)
+      document.removeEventListener('visibilitychange', aoVoltar)
+    }
+  }, [usuarioId, recarregar, recarregarMinhasRespostas])
 
-    return { rodadasOrdenadas: ordenadas, rodadaAtual: atual, proximaRodada: proxima, ranking, minhaPosicao }
-  }, [state])
+  const value = useMemo(() => {
+    const { rodadas } = dados
+    const rodadaNoAr = rodadas.find((r) => r.status === 'no_ar') ?? null
+    const agora = new Date().toTimeString().slice(0, 5)
+    const agendadas = rodadas.filter((r) => r.status === 'agendada')
+    const proximaRodada = agendadas.find((r) => r.horario > (rodadaNoAr?.horario ?? agora)) ?? agendadas[0] ?? null
+    return {
+      ...dados,
+      modoApresentacao: dados.configuracoes?.modo_apresentacao ?? false,
+      minhasRespostas,
+      rodadaNoAr,
+      proximaRodada,
+      carregando,
+      erro,
+      recarregar,
+      recarregarMinhasRespostas,
+    }
+  }, [dados, minhasRespostas, carregando, erro, recarregar, recarregarMinhasRespostas])
 
-  const value = useMemo(() => ({ state, dispatch, ...derivados }), [state, derivados])
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }
 
-export function useStore() {
-  return useContext(StoreContext)
+export const useDados = () => useContext(DataContext)
+
+/** Ranking da semana, calculado no servidor. Atualiza a cada 20 s e quando `gatilho` muda. */
+export function useRanking(limite = 10, gatilho) {
+  const [ranking, setRanking] = useState(null)
+  const carregar = useCallback(async () => {
+    const { data } = await supabase.rpc('ranking_semana', { p_limite: limite })
+    if (data) setRanking(data.map((l) => ({ ...l, pontos: Number(l.pontos), posicao: Number(l.posicao) })))
+  }, [limite])
+
+  useEffect(() => {
+    carregar()
+    const id = setInterval(carregar, 20000)
+    return () => clearInterval(id)
+  }, [carregar, gatilho])
+
+  return { ranking, eu: ranking?.find((l) => l.eu) ?? null, recarregar: carregar }
 }
 
-export function calcularPontos(valorMaximo, tempoRestante, tempoTotal) {
-  // Acertou rápido = valor cheio; acertou no último segundo = metade.
-  return arred(valorMaximo * (0.5 + 0.5 * (tempoRestante / tempoTotal)))
-}
-
-export const fmt = (n) => Number(n).toFixed(2)
+export const fmt = (n) => Number(n ?? 0).toFixed(2)

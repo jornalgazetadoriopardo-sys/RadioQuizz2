@@ -95,5 +95,5 @@ export function useContagem(segundos, aoTerminar, { pausarQuandoOculto = false }
     }
   }, [restante])
 
-  return { restante, segundos: Math.ceil(restante / 1000), fracao: restante / (segundos * 1000), oculto }
+  return { restante, segundos: Math.ceil(restante / 1000), fracao: restante / Math.max(segundos * 1000, 1), oculto }
 }

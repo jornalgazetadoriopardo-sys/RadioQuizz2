@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { BatteryCharging, LayoutGrid, Monitor, Radio, RotateCcw, Smartphone, Wifi } from 'lucide-react'
+import { BatteryCharging, LayoutGrid, Monitor, Radio, Smartphone, Wifi } from 'lucide-react'
 import { RADIO } from './config.js'
-import { useStore } from './store.jsx'
 import ListenerApp from './listener/ListenerApp.jsx'
 import Admin from './admin/Admin.jsx'
 
@@ -38,13 +37,9 @@ export default function App() {
 }
 
 function BarraTopo({ visao, trocar }) {
-  const { dispatch } = useStore()
   const telaCheia = () => {
     if (document.fullscreenElement) document.exitFullscreen()
     else document.documentElement.requestFullscreen?.()
-  }
-  const reiniciar = () => {
-    if (confirm('Reiniciar o demo? Todas as respostas e alterações serão apagadas.')) dispatch({ type: 'RESET' })
   }
 
   return (
@@ -87,9 +82,6 @@ function BarraTopo({ visao, trocar }) {
         <div className="flex items-center gap-2">
           <button onClick={telaCheia} className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:bg-slate-50 md:flex">
             <Monitor size={15} /> Modo Tela Cheia
-          </button>
-          <button onClick={reiniciar} title="Reiniciar demo" className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white shadow-sm hover:bg-slate-50">
-            <RotateCcw size={15} />
           </button>
         </div>
       </div>
