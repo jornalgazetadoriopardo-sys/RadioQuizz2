@@ -257,10 +257,8 @@ begin
     v_decorrido := extract(epoch from now() - v_resposta.iniciada_em);
     v_esgotado := p_alternativa is null or v_decorrido > v_rodada.tempo_resposta + c_tolerancia;
     v_acertou := not v_esgotado and p_alternativa = v_conteudo.correta;
-    v_pontos := case
-      when v_acertou then round(v_rodada.pontos * (0.5 + 0.5 * greatest(0, v_rodada.tempo_resposta - v_decorrido) / v_rodada.tempo_resposta), 2)
-      else 0
-    end;
+    -- Acertou dentro do tempo: ganha o valor cheio da rodada (a velocidade não conta).
+    v_pontos := case when v_acertou then v_rodada.pontos else 0 end;
 
     update respostas
     set respondida_em = now(), alternativa = p_alternativa, acertou = v_acertou, tempo_esgotado = v_esgotado, pontos = v_pontos

@@ -233,7 +233,7 @@ function Resultado({ rodada, resultado, aoSair }) {
       </span>
       {acertou && (
         <p className="mt-2 flex items-center gap-1 text-xs text-emerald-700">
-          <PartyPopper size={14} /> Quanto mais rápido, mais pontos!
+          <PartyPopper size={14} /> Pontos somados ao seu ranking da semana!
         </p>
       )}
 

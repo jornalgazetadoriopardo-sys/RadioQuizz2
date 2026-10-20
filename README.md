@@ -8,8 +8,9 @@ responde pelo celular, acumula pontos e concorre a prêmios oferecidos por patro
   prêmio da semana, ranking semanal, grade do dia e "Relatar problema".
 - **Fluxo da rodada:** anúncio do patrocinador (15 s, pausa se o ouvinte sair da tela) → pergunta com
   cronômetro → anúncio de liberação do gabarito (30 s) → resultado com explicação.
-- **Pontuação:** quanto mais rápido, mais pontos (de 100% a 50% do valor da rodada). A resposta é conferida e o
-  tempo é medido **no servidor** — o gabarito nunca vai para o celular antes da resposta.
+- **Pontuação:** quem acerta ganha o valor cheio da rodada (valores quebrados, ex.: 53,75, para evitar empates).
+  Cada pergunta tem um **tempo limite** definido pelo admin, medido **no servidor** — resposta fora do tempo vale 0
+  e o gabarito nunca vai para o celular antes da resposta.
 - **Painel Admin** (`/#admin`): aba **Ao vivo** (soltar/encerrar a pergunta e placar em tempo real), cadastro de
   rodadas, patrocinadores (com logo) e prêmios, ranking, feedback da equipe e **Modo apresentação** (anúncios de 5 s).
 

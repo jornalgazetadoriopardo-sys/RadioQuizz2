@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  BarChart3, Gift, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
+  BarChart3, Dices, Gift, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
   ShieldAlert, Square, Trash2, Trophy, Zap,
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
@@ -248,7 +248,7 @@ function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
             {rodada.horario} • {rodada.titulo}
           </h2>
           <p className="text-sm text-slate-500">
-            {rodada.nivel} • vale até {fmt(rodada.pontos)} pts • {rodada.tempo_resposta}s para responder
+            {rodada.nivel} • vale {fmt(rodada.pontos)} pts • {rodada.tempo_resposta}s para responder
           </p>
         </div>
         <Botao variante="perigo" onClick={encerrar} disabled={ocupado}>
@@ -420,6 +420,13 @@ function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => t
 
 /* ---------- abas de cadastro ---------- */
 
+// Faixa de pontos por nível; o sorteio gera centavos para reduzir empates.
+const FAIXA_PONTOS = { 'Fácil': [20, 40], 'Médio': [40, 70], 'Difícil': [70, 100], 'Extremo': [100, 150] }
+function sortearPontos(nivel) {
+  const [min, max] = FAIXA_PONTOS[nivel] ?? [30, 80]
+  return Math.round((min + Math.random() * (max - min)) * 100) / 100
+}
+
 const CAMPOS_RODADA = ['id', 'horario', 'categoria', 'titulo', 'descricao', 'nivel', 'pontos', 'tempo_resposta']
 
 function Rodadas() {
@@ -491,17 +498,24 @@ function Rodadas() {
               ))}
             </select>
           </Campo>
-          <Campo rotulo="Pontos (máximo)" className="sm:col-span-1">
-            <Numero valor={r.pontos} onChange={(v) => set('pontos', v)} step="0.05" min="0" />
-          </Campo>
-          <Campo rotulo="Tempo (s)" className="sm:col-span-1">
+          <Campo rotulo="Tempo para responder (segundos)" className="sm:col-span-2">
             <Numero valor={r.tempo_resposta} onChange={(v) => set('tempo_resposta', v)} min="5" max="120" />
           </Campo>
-          <Campo rotulo="Título do card" className="sm:col-span-3">
-            <Texto valor={r.titulo} onChange={(v) => set('titulo', v)} />
-          </Campo>
+          <div className="sm:col-span-3">
+            <span className="mb-1 block text-xs font-semibold text-slate-600">Pontos para quem acertar</span>
+            <div className="flex gap-2">
+              <Numero valor={r.pontos} onChange={(v) => set('pontos', v)} step="0.01" min="0" />
+              <Botao type="button" variante="secundario" title="Sortear um valor quebrado conforme o nível" onClick={() => set('pontos', sortearPontos(r.nivel))}>
+                <Dices size={15} /> Sortear
+              </Botao>
+            </div>
+            <span className="mt-1 block text-[11px] text-slate-400">Use valores quebrados (ex.: 53,75) para evitar empates no ranking.</span>
+          </div>
           <Campo rotulo="Categoria" className="sm:col-span-3">
             <Texto valor={r.categoria} onChange={(v) => set('categoria', v)} />
+          </Campo>
+          <Campo rotulo="Título do card" className="sm:col-span-6">
+            <Texto valor={r.titulo} onChange={(v) => set('titulo', v)} />
           </Campo>
           <Campo rotulo="Descrição (aparece na tela inicial)" className="sm:col-span-6">
             <Texto valor={r.descricao} onChange={(v) => set('descricao', v)} />
