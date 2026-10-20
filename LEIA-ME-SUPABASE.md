@@ -23,13 +23,25 @@ Em **Authentication → URL Configuration**:
 - **Redirect URLs**: adicione o mesmo endereço e também `http://localhost:5173` (para desenvolvimento).
 
 ## 3. Tornar alguém administrador
-1. A pessoa entra uma vez no app com **e-mail** (o "entrar só com o nome" não serve para admin).
+**Jeito recomendado (não depende de envio de e-mail):**
+1. Em **Authentication → Users → Add user → Create new user**, informe o e-mail e uma senha da pessoa
+   e marque **Auto Confirm User**.
 2. No **SQL Editor**, rode trocando o e-mail:
    ```sql
-   update public.perfis set admin = true
+   update public.perfis set admin = true, nome = 'Nome da Pessoa'
    where id = (select id from auth.users where email = 'email.do.admin@exemplo.com');
    ```
-3. A pessoa recarrega a página e o **Painel Admin** fica liberado.
+3. A pessoa abre o **Painel Admin → Entrar com e-mail**, digita e-mail **e senha** e clica em **Entrar**.
+
+Também funciona entrar primeiro pelo link enviado por e-mail e depois rodar o mesmo `update`,
+desde que o envio de e-mail esteja funcionando (veja o item 2).
+
+## Se aparecer "Error sending magic link email"
+O Supabase não conseguiu enviar o e-mail. Para ver o motivo exato: **Logs → Auth** (ou **Authentication → Logs**)
+e procure a linha com erro no horário da tentativa. Causas comuns:
+- o endereço não é membro da equipe do projeto (limitação do e-mail padrão);
+- limite de envios por hora atingido;
+- SMTP próprio configurado com usuário/senha errados.
 
 ## Como a equipe testa
 1. A produção abre o **Painel Admin → Ao vivo** no computador.

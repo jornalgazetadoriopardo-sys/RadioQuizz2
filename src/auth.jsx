@@ -58,6 +58,7 @@ export function TelaLogin({ admin = false }) {
   const [etapa, setEtapa] = useState('inicio') // inicio | email | codigo
   const [email, setEmail] = useState('')
   const [codigo, setCodigo] = useState('')
+  const [senha, setSenha] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
 
@@ -82,6 +83,8 @@ export function TelaLogin({ admin = false }) {
   const anonimo = () => executar(() => supabase.auth.signInAnonymously())
   const enviarEmail = async (e) => {
     e.preventDefault()
+    // Com senha (contas criadas pelo painel do Supabase) entra direto, sem depender de envio de e-mail.
+    if (senha) return executar(() => supabase.auth.signInWithPassword({ email: email.trim(), password: senha }))
     const ok = await executar(() => supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: voltarPara } }))
     if (ok) setEtapa('codigo')
   }
@@ -144,8 +147,18 @@ export function TelaLogin({ admin = false }) {
               autoComplete="email"
               className="w-full rounded-xl bg-white px-4 py-3.5 text-slate-900 outline-none"
             />
+            {admin && (
+              <input
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Senha (deixe em branco para receber link)"
+                autoComplete="current-password"
+                className="w-full rounded-xl bg-white px-4 py-3.5 text-slate-900 outline-none"
+              />
+            )}
             <button disabled={ocupado || !email.includes('@')} className={`${btnCls} bg-slate-900 text-white`}>
-              {ocupado ? <Loader2 className="animate-spin" size={18} /> : 'Receber link de acesso'}
+              {ocupado ? <Loader2 className="animate-spin" size={18} /> : senha ? 'Entrar' : 'Receber link de acesso'}
             </button>
             <button type="button" onClick={() => setEtapa('inicio')} className="w-full text-center text-xs text-rose-100 underline">
               Voltar

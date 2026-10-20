@@ -12,6 +12,10 @@ const MENSAGENS = {
   ja_respondida: 'Você já respondeu esta rodada.',
   pergunta_nao_aberta: 'A pergunta não foi aberta. Tente novamente.',
   acesso_negado: 'Apenas administradores podem fazer isso.',
+  'Invalid login credentials': 'E-mail ou senha incorretos.',
+  'Error sending magic link email': 'Não foi possível enviar o e-mail de acesso. Tente entrar com senha ou fale com a produção.',
+  'rate limit': 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.',
+  'Anonymous sign-ins are disabled': 'O acesso de teste está desligado no momento.',
 }
 
 export function mensagemDeErro(erro) {
