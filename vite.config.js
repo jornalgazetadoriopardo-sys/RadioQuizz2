@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
+  // Compatível com iPhones a partir do iOS 14 e Androids com Chrome 87+.
+  build: { target: ['es2020', 'safari14', 'chrome87', 'firefox78', 'edge88'] },
 })

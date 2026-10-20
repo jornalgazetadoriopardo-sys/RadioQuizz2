@@ -4,13 +4,16 @@ import './index.css'
 import { AuthProvider } from './auth.jsx'
 import { DataProvider } from './store.jsx'
 import App from './App.jsx'
+import ErroGeral from './ErroGeral.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <DataProvider>
-        <App />
-      </DataProvider>
-    </AuthProvider>
+    <ErroGeral>
+      <AuthProvider>
+        <DataProvider>
+          <App />
+        </DataProvider>
+      </AuthProvider>
+    </ErroGeral>
   </StrictMode>,
 )
