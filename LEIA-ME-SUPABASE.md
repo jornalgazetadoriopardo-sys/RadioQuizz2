@@ -9,6 +9,11 @@ Projeto: `sxhwkkplxaotpxtgbzqe` — painel em https://supabase.com/dashboard/pro
 3. Abra outra **New query**, cole [`supabase/migrations/002_dados_exemplo.sql`](supabase/migrations/002_dados_exemplo.sql) e clique em **Run**
    (cria 6 rodadas, 4 patrocinadores e 3 prêmios de exemplo — tudo editável depois pelo Painel Admin).
 
+### Atualizações do banco
+Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse arquivo no **SQL Editor**, na ordem do número:
+- `003_pontuacao_fixa.sql` — quem acerta ganha o valor cheio da rodada (sem bônus por velocidade).
+- `004_historico.sql` — histórico de participações com protocolo (auditoria para reclamações).
+
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
 - **Allow anonymous sign-ins**: ligue. É o botão "Entrar só com o nome (teste)" — o jeito mais rápido para a equipe testar.
@@ -49,6 +54,13 @@ e procure a linha com erro no horário da tentativa. Causas comuns:
 3. A produção clica em **No ar** numa rodada: a pergunta aparece na hora em todos os celulares.
 4. O placar ao vivo mostra quantos abriram, responderam e acertaram.
 5. Problemas encontrados: botão **Relatar problema** no app → aparecem na aba **Feedback** do painel.
+
+## Reclamações e conferência
+- O ouvinte vê tudo o que respondeu em **Meu histórico** (tela inicial do app), com data, hora e **protocolo**.
+- A produção consulta todos em **Painel Admin → Histórico**: busca por nome, e-mail, protocolo ou rodada,
+  filtro por período e **Exportar planilha** (abre no Excel).
+- O registro guarda a pergunta e o gabarito **como estavam no momento** e não é apagado ao zerar o ranking,
+  reabrir ou excluir uma rodada. Os horários são os do servidor (não dá para alterar pelo celular).
 
 Dica: ligue o **Modo apresentação** no painel para os anúncios durarem 5 s em vez de 15 s e 30 s.
 

@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { CheckCircle2, ChevronLeft, ChevronRight, Clock, Gift, LogOut, Medal, MessageSquareWarning, Play, RadioTower, Trophy, XCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock, Gift, History, LogOut, Medal, MessageSquareWarning, Play, RadioTower, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
 import { fmt, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { Avatar, Card, Selo } from '../ui.jsx'
 import Rodada from './Rodada.jsx'
+import { DetalheParticipacao, SeloSituacao, fmtDataHora } from '../historico.jsx'
 
 export default function ListenerApp() {
   const { carregando: carregandoAuth, sessao, perfil } = useAuth()
@@ -33,6 +34,7 @@ function AppLogado() {
         {tela === 'grade' && <Grade voltar={() => setTela('inicio')} />}
         {tela === 'premios' && <Premios voltar={() => setTela('inicio')} />}
         {tela === 'feedback' && <Feedback voltar={() => setTela('inicio')} />}
+        {tela === 'historico' && <MeuHistorico voltar={() => setTela('inicio')} />}
       </div>
     </div>
   )
@@ -157,6 +159,17 @@ function Inicio({ irPara, eu }) {
           Abrir Ranking
         </button>
       </Card>
+
+      <button onClick={() => irPara('historico')} className="flex w-full items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-sm">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-slate-100 text-slate-600">
+          <History size={22} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Meu histórico</p>
+          <p className="text-xs text-slate-500">Suas perguntas, respostas e pontos, com data e hora</p>
+        </div>
+        <ChevronRight size={18} className="text-slate-400" />
+      </button>
 
       <div className="flex items-center justify-center gap-5 pt-2 text-xs text-slate-400">
         <button onClick={() => irPara('feedback')} className="flex items-center gap-1.5 hover:text-slate-600">
@@ -330,6 +343,60 @@ function Feedback({ voltar }) {
           </button>
         </form>
       )}
+    </>
+  )
+}
+
+function MeuHistorico({ voltar }) {
+  const [itens, setItens] = useState(null)
+  const [erro, setErro] = useState('')
+  const [aberto, setAberto] = useState(null)
+
+  useEffect(() => {
+    supabase.rpc('meu_historico', { p_limite: 200 }).then(({ data, error }) => {
+      if (error) setErro(mensagemDeErro(error))
+      else setItens(data)
+    })
+  }, [])
+
+  return (
+    <>
+      <Titulo voltar={voltar}>Meu histórico</Titulo>
+      <p className="mb-3 rounded-xl bg-slate-100 p-3 text-[12px] leading-relaxed text-slate-600">
+        Todas as suas participações ficam registradas com o horário do servidor. Em caso de dúvida ou reclamação,
+        informe à produção o <b>protocolo</b> da participação.
+      </p>
+      {erro && <p className="text-sm text-rose-600">{erro}</p>}
+      {!itens && !erro && <Carregando />}
+      {itens?.length === 0 && <Card className="p-6 text-center text-sm text-slate-500">Você ainda não participou de nenhuma rodada.</Card>}
+      <div className="space-y-2.5">
+        {itens?.map((h) => (
+          <Card key={h.protocolo} className="overflow-hidden">
+            <button onClick={() => setAberto(aberto === h.protocolo ? null : h.protocolo)} className="block w-full p-3.5 text-left">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">
+                    {h.rodada_horario} • {h.rodada_titulo}
+                  </p>
+                  <p className="text-[11px] text-slate-500">{fmtDataHora(h.aberta_em)}</p>
+                </div>
+                <SeloSituacao h={h} />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400">
+                <span>
+                  Protocolo <b className="font-mono text-slate-600">{h.protocolo}</b>
+                </span>
+                <span className="font-bold text-slate-700">{fmt(h.pontos)} pts</span>
+              </div>
+            </button>
+            {aberto === h.protocolo && (
+              <div className="border-t border-slate-100 bg-slate-50/60 p-3.5">
+                <DetalheParticipacao h={h} />
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
     </>
   )
 }

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  BarChart3, Dices, Gift, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
+  BarChart3, Dices, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
   ShieldAlert, Square, Trash2, Trophy, Zap,
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
 import { Carregando, TelaLogin, useAuth } from '../auth.jsx'
 import { fmt, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
+import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
 import { Avatar, CORES, Card, ICONES_PATROCINADOR, Icone, Selo } from '../ui.jsx'
 
 const ABAS = [
@@ -15,6 +16,7 @@ const ABAS = [
   { id: 'patrocinadores', nome: 'Patrocinadores', icone: Megaphone },
   { id: 'premios', nome: 'Prêmios', icone: Gift },
   { id: 'ranking', nome: 'Ranking', icone: Trophy },
+  { id: 'historico', nome: 'Histórico', icone: History },
   { id: 'feedback', nome: 'Feedback', icone: MessageSquare },
 ]
 
@@ -111,6 +113,7 @@ function Painel() {
         {aba === 'patrocinadores' && <Patrocinadores />}
         {aba === 'premios' && <Premios />}
         {aba === 'ranking' && <RankingAdmin />}
+        {aba === 'historico' && <HistoricoAdmin />}
         {aba === 'feedback' && <FeedbackAdmin />}
       </div>
     </div>
@@ -734,6 +737,131 @@ function FeedbackAdmin() {
           {f.navegador && <p className="mt-1 truncate text-[11px] text-slate-400">{f.navegador}</p>}
         </div>
       ))}
+    </Card>
+  )
+}
+
+/* ---------- aba Histórico (auditoria) ---------- */
+
+const hojeBR = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+
+function HistoricoAdmin() {
+  const [busca, setBusca] = useState('')
+  const [de, setDe] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 7)
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  })
+  const [ate, setAte] = useState(hojeBR)
+  const [itens, setItens] = useState(null)
+  const [erro, setErro] = useState('')
+  const [carregando, setCarregando] = useState(false)
+  const [aberto, setAberto] = useState(null)
+
+  const buscar = async (e) => {
+    e?.preventDefault()
+    setCarregando(true)
+    setErro('')
+    const { data, error } = await supabase.rpc('historico_admin', {
+      p_busca: busca.trim() || null,
+      p_de: de || null,
+      p_ate: ate || null,
+      p_limite: 2000,
+    })
+    setCarregando(false)
+    if (error) return setErro(mensagemDeErro(error))
+    setItens(data)
+  }
+
+  useEffect(() => {
+    buscar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const exportar = () => {
+    const num = (v) => (v == null ? '' : String(v).replace('.', ','))
+    const linhas = [
+      ['Protocolo', 'Abriu em', 'Respondeu em', 'Nome', 'E-mail', 'Conta de teste', 'Rodada', 'Título', 'Pergunta', 'Resposta dada',
+        'Resposta correta', 'Situação', 'Pontos', 'Valor da rodada', 'Tempo gasto (s)', 'Tempo limite (s)', 'Navegador'],
+      ...itens.map((h) => [
+        h.protocolo, fmtDataHora(h.aberta_em), fmtDataHora(h.respondida_em), h.nome, h.email ?? '', h.anonimo ? 'sim' : 'não',
+        h.rodada_horario, h.rodada_titulo, h.pergunta, h.alternativa != null ? h.alternativas[h.alternativa] : '',
+        h.alternativas[h.correta], situacao(h).texto, num(h.pontos), num(h.valor_pontos), num(h.tempo_gasto), h.tempo_limite, h.navegador ?? '',
+      ]),
+    ]
+    const csv = linhas.map((l) => l.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n')
+    // BOM para o Excel abrir os acentos corretamente
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `historico-quiz-${de || 'inicio'}-a-${ate || 'hoje'}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  return (
+    <Card>
+      <form onSubmit={buscar} className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
+        <Campo rotulo="Buscar (nome, e-mail, protocolo ou rodada)" className="min-w-56 flex-1">
+          <Texto valor={busca} onChange={setBusca} placeholder="Ex.: Juliana ou 7F3A-91C2" />
+        </Campo>
+        <Campo rotulo="De">
+          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className={inputCls} />
+        </Campo>
+        <Campo rotulo="Até">
+          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className={inputCls} />
+        </Campo>
+        <Botao type="submit" disabled={carregando}>
+          {carregando ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Buscar
+        </Botao>
+        <Botao type="button" variante="secundario" disabled={!itens?.length} onClick={exportar}>
+          <Download size={15} /> Exportar planilha
+        </Botao>
+      </form>
+
+      {erro && <p className="p-4 text-sm text-rose-600">{erro}</p>}
+      {!itens && !erro && <Carregando />}
+      {itens && (
+        <>
+          <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
+            {itens.length} participação(ões) encontrada(s). O registro guarda a pergunta como estava no momento e não é apagado ao zerar o ranking.
+          </p>
+          {itens.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhuma participação no período.</p>}
+          <div className="divide-y divide-slate-100">
+            {itens.map((h) => (
+              <div key={h.protocolo}>
+                <button
+                  onClick={() => setAberto(aberto === h.protocolo ? null : h.protocolo)}
+                  className={`grid w-full grid-cols-[110px_1fr_auto] items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-slate-50 sm:grid-cols-[160px_180px_1fr_auto_80px] ${aberto === h.protocolo ? 'bg-slate-50' : ''}`}
+                >
+                  <span className="text-xs tabular-nums text-slate-500">{fmtDataHora(h.aberta_em)}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{h.nome || 'Ouvinte'}</span>
+                    <span className="block truncate text-[11px] text-slate-400">{h.email ?? (h.anonimo ? 'conta de teste (sem e-mail)' : '')}</span>
+                  </span>
+                  <span className="hidden min-w-0 truncate text-slate-600 sm:block">
+                    {h.rodada_horario} • {h.rodada_titulo}
+                  </span>
+                  <SeloSituacao h={h} />
+                  <span className="hidden text-right font-bold tabular-nums sm:block">{fmt(h.pontos)}</span>
+                </button>
+                {aberto === h.protocolo && (
+                  <div className="grid gap-4 bg-slate-50 px-4 pb-4 pt-1 sm:grid-cols-[1fr_260px]">
+                    <DetalheParticipacao h={h} />
+                    <div className="space-y-1 text-[11px] text-slate-500">
+                      <p>
+                        Protocolo: <b className="font-mono text-slate-700">{h.protocolo}</b>
+                      </p>
+                      <p className="break-all">ID do ouvinte: {h.usuario_id}</p>
+                      {h.navegador && <p className="break-words">Aparelho/navegador: {h.navegador}</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </Card>
   )
 }

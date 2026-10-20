@@ -243,6 +243,12 @@ function Resultado({ rodada, resultado, aoSair }) {
         {proximaRodada && proximaRodada.id !== rodada.id && <> Às {proximaRodada.horario} tem mais um quiz no ar!</>}
       </div>
 
+      {resultado?.protocolo && (
+        <p className="mt-3 text-[11px] text-slate-400">
+          Protocolo da participação: <b className="font-mono text-slate-600">{resultado.protocolo}</b> (fica no seu histórico)
+        </p>
+      )}
+
       <button onClick={aoSair} className="mt-6 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-extrabold uppercase tracking-wide text-white">
         Voltar ao início
       </button>
