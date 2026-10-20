@@ -101,4 +101,5 @@ export function useRanking(limite = 10, gatilho) {
   return { ranking, eu: ranking?.find((l) => l.eu) ?? null, recarregar: carregar }
 }
 
-export const fmt = (n) => Number(n ?? 0).toFixed(2)
+// Pontos no formato brasileiro: 53,75
+export const fmt = (n) => Number(n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

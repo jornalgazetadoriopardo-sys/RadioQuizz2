@@ -43,7 +43,8 @@ function BarraTopo({ visao, trocar }) {
   }
 
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
+    // No celular o ouvinte não vê esta barra (só atrapalharia); o painel abre pelo endereço .../#admin
+    <header className={`sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur ${visao === 'ouvinte' ? 'hidden sm:block' : ''}`}>
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5 sm:py-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-600 text-white shadow-md shadow-rose-600/30 sm:h-11 sm:w-11">
           <Radio size={20} />
@@ -107,7 +108,7 @@ function Celular({ children }) {
           <BatteryCharging size={14} className="text-emerald-400" />
         </span>
       </div>
-      <div className="relative h-[calc(100dvh-57px)] bg-slate-50 sm:h-auto sm:flex-1 sm:min-h-0">{children}</div>
+      <div className="altura-tela relative bg-slate-50 sm:h-auto sm:min-h-0 sm:flex-1">{children}</div>
     </div>
   )
 }

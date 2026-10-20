@@ -44,14 +44,14 @@ export const useAuth = () => useContext(AuthContext)
 
 export function Carregando({ texto = 'Carregando…' }) {
   return (
-    <div className="flex h-full min-h-60 flex-col items-center justify-center gap-3 text-sm text-slate-500">
-      <Loader2 className="animate-spin text-rose-600" size={28} />
+    <div className="flex h-full min-h-60 flex-col items-center justify-center gap-3 text-lg font-semibold text-slate-700">
+      <Loader2 className="animate-spin text-rose-600" size={40} />
       {texto}
     </div>
   )
 }
 
-const btnCls = 'flex w-full items-center justify-center gap-2.5 rounded-xl py-3.5 text-sm font-bold transition disabled:opacity-50'
+const btnCls = 'flex min-h-[60px] w-full items-center justify-center gap-3 rounded-2xl px-4 text-xl font-extrabold transition active:scale-[.98] disabled:opacity-50'
 
 /** Tela de entrada. `admin` deixa de fora o "entrar só com o nome" (admin precisa de conta de verdade). */
 export function TelaLogin({ admin = false }) {
@@ -98,8 +98,8 @@ export function TelaLogin({ admin = false }) {
       <div className="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 animate-pop">
         <Radio size={32} />
       </div>
-      <h1 className="mt-6 font-display text-3xl leading-tight">{admin ? 'Painel do Quiz' : 'Pergunta da Hora'}</h1>
-      <p className="mt-2 text-sm text-rose-100">
+      <h1 className="mt-6 font-display text-4xl leading-tight">{admin ? 'Painel do Quiz' : 'Pergunta da Hora'}</h1>
+      <p className="mt-3 text-xl leading-snug text-white">
         {admin
           ? 'Entre com o e-mail cadastrado como administrador.'
           : `Ouça a ${RADIO.nome} ${RADIO.frequencia}, responda as perguntas do locutor e concorra a prêmios toda semana!`}
@@ -119,14 +119,14 @@ export function TelaLogin({ admin = false }) {
                 Continuar com Google
               </button>
             )}
-            {LOGIN.email && (
-              <button onClick={() => setEtapa('email')} disabled={ocupado} className={`${btnCls} bg-slate-900 text-white`}>
-                <Mail size={18} /> Entrar com e-mail
+            {LOGIN.anonimo && !admin && (
+              <button onClick={anonimo} disabled={ocupado} className={`${btnCls} bg-white text-rose-700 shadow-lg`}>
+                {ocupado ? <Loader2 className="animate-spin" size={26} /> : <UserRound size={26} />} Entrar com meu nome
               </button>
             )}
-            {LOGIN.anonimo && !admin && (
-              <button onClick={anonimo} disabled={ocupado} className={`${btnCls} bg-white/15 text-white ring-1 ring-white/30`}>
-                <UserRound size={18} /> Entrar só com o nome (teste)
+            {LOGIN.email && (
+              <button onClick={() => setEtapa('email')} disabled={ocupado} className={`${btnCls} bg-slate-900 text-white`}>
+                <Mail size={24} /> Entrar com e-mail
               </button>
             )}
           </>
@@ -134,7 +134,7 @@ export function TelaLogin({ admin = false }) {
 
         {etapa === 'email' && (
           <form onSubmit={enviarEmail} className="space-y-3">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-rose-100" htmlFor="email">
+            <label className="block text-xl font-bold text-white" htmlFor="email">
               Seu e-mail
             </label>
             <input
@@ -145,7 +145,7 @@ export function TelaLogin({ admin = false }) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="voce@email.com"
               autoComplete="email"
-              className="w-full rounded-xl bg-white px-4 py-3.5 text-slate-900 outline-none"
+              className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40"
             />
             {admin && (
               <input
@@ -154,13 +154,13 @@ export function TelaLogin({ admin = false }) {
                 onChange={(e) => setSenha(e.target.value)}
                 placeholder="Senha (deixe em branco para receber link)"
                 autoComplete="current-password"
-                className="w-full rounded-xl bg-white px-4 py-3.5 text-slate-900 outline-none"
+                className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40"
               />
             )}
             <button disabled={ocupado || !email.includes('@')} className={`${btnCls} bg-slate-900 text-white`}>
               {ocupado ? <Loader2 className="animate-spin" size={18} /> : senha ? 'Entrar' : 'Receber link de acesso'}
             </button>
-            <button type="button" onClick={() => setEtapa('inicio')} className="w-full text-center text-xs text-rose-100 underline">
+            <button type="button" onClick={() => setEtapa('inicio')} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
               Voltar
             </button>
           </form>
@@ -168,7 +168,7 @@ export function TelaLogin({ admin = false }) {
 
         {etapa === 'codigo' && (
           <form onSubmit={verificarCodigo} className="space-y-3">
-            <div className="rounded-xl bg-white/15 p-4 text-sm">
+            <div className="rounded-2xl bg-white/15 p-4 text-lg leading-snug">
               Enviamos um e-mail para <b>{email}</b>. Abra a mensagem e toque no link para entrar, ou digite abaixo o código, se ele vier no e-mail.
             </div>
             <input
@@ -177,18 +177,18 @@ export function TelaLogin({ admin = false }) {
               value={codigo}
               onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 8))}
               placeholder="Código"
-              className="w-full rounded-xl bg-white px-4 py-3.5 text-center text-lg font-bold tracking-[0.4em] text-slate-900 outline-none"
+              className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-center text-2xl font-bold tracking-[0.4em] text-slate-900 outline-none"
             />
             <button disabled={ocupado || codigo.length < 6} className={`${btnCls} bg-slate-900 text-white`}>
               {ocupado ? <Loader2 className="animate-spin" size={18} /> : 'Confirmar código'}
             </button>
-            <button type="button" onClick={() => setEtapa('email')} className="w-full text-center text-xs text-rose-100 underline">
+            <button type="button" onClick={() => setEtapa('email')} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
               Usar outro e-mail
             </button>
           </form>
         )}
 
-        {erro && <p className="rounded-lg bg-white px-3 py-2 text-center text-sm font-semibold text-rose-700">{erro}</p>}
+        {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-rose-700">{erro}</p>}
       </div>
     </div>
   )
@@ -213,8 +213,8 @@ export function TelaNome() {
 
   return (
     <div className="flex h-full flex-col justify-center bg-gradient-to-b from-rose-600 to-rose-700 px-7 text-white">
-      <h1 className="font-display text-2xl leading-tight">Como podemos te chamar?</h1>
-      <p className="mt-2 text-sm text-rose-100">Esse nome aparece no ranking e pode ser anunciado no ar se você ganhar.</p>
+      <h1 className="font-display text-3xl leading-tight">Qual é o seu nome?</h1>
+      <p className="mt-3 text-xl leading-snug text-white">É assim que você vai aparecer no ranking e ser chamado no rádio se ganhar.</p>
       <form className="mt-6 space-y-3" onSubmit={salvar}>
         <input
           value={nome}
@@ -222,13 +222,13 @@ export function TelaNome() {
           placeholder="Seu nome"
           autoComplete="name"
           maxLength={40}
-          className="w-full rounded-xl bg-white px-4 py-3.5 text-slate-900 outline-none"
+          className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40"
         />
         <button disabled={!valido || ocupado} className={`${btnCls} bg-slate-900 text-white`}>
           Começar a jogar
         </button>
-        {erro && <p className="rounded-lg bg-white px-3 py-2 text-center text-sm font-semibold text-rose-700">{erro}</p>}
-        <button type="button" onClick={sair} className="w-full text-center text-xs text-rose-100 underline">
+        {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-rose-700">{erro}</p>}
+        <button type="button" onClick={sair} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
           Sair
         </button>
       </form>

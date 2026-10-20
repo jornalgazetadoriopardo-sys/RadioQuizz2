@@ -13,3 +13,7 @@ body { background: #eef2f7; color: #0f172a; -webkit-tap-highlight-color: transpa
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+/* Altura da tela no celular: 100vh para iPhones antigos, 100dvh (desconta a barra do navegador) nos novos. */
+.altura-tela { height: 100vh; height: 100dvh; }
+@media (min-width: 640px) { .altura-tela { height: auto; } }
