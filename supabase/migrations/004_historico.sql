@@ -226,3 +226,6 @@ from respostas r
 join rodadas ro on ro.id = r.rodada_id
 join rodadas_conteudo c on c.rodada_id = r.rodada_id
 where not exists (select 1 from historico h where h.resposta_id = r.id);
+
+-- Avisa a API do Supabase para recarregar a lista de funções (evita o erro "schema cache").
+notify pgrst, 'reload schema';

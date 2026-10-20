@@ -59,3 +59,6 @@ begin
   );
 end
 $$;
+
+-- Avisa a API do Supabase para recarregar a lista de funções (evita o erro "schema cache").
+notify pgrst, 'reload schema';

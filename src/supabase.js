@@ -15,6 +15,7 @@ const MENSAGENS = {
   'Invalid login credentials': 'E-mail ou senha incorretos.',
   'Error sending magic link email': 'Não foi possível enviar o e-mail de acesso. Tente entrar com senha ou fale com a produção.',
   'rate limit': 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.',
+  'schema cache': 'O banco de dados ainda não tem esta atualização. Rode o script mais recente de supabase/migrations no SQL Editor (veja LEIA-ME-SUPABASE.md).',
   'Anonymous sign-ins are disabled': 'O acesso de teste está desligado no momento.',
 }
 
