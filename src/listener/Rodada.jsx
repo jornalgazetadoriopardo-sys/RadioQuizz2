@@ -153,28 +153,21 @@ function Anuncio({ segundos, patrocinador, aoTerminar, titulo, texto, cor }) {
 }
 
 function Pergunta({ rodada, pergunta, aoResponder }) {
-  const [selecionada, setSelecionada] = useState(null)
-  const [enviando, setEnviando] = useState(false)
-  const selecionadaRef = useRef(null)
+  const [escolhida, setEscolhida] = useState(null)
   const enviado = useRef(false)
 
+  // Um toque na alternativa já envia a resposta.
   const enviar = (alt) => {
     if (enviado.current) return
     enviado.current = true
-    setEnviando(true)
+    setEscolhida(alt)
     aoResponder(alt)
   }
   // O tempo restante vem do servidor (se o ouvinte saiu e voltou, não recomeça do zero).
-  // Se o tempo acabar com uma alternativa marcada, ela é enviada.
-  const { segundos, fracao } = useContagem(Number(pergunta.segundos_restantes), () => enviar(selecionadaRef.current))
+  const { segundos, fracao } = useContagem(Number(pergunta.segundos_restantes), () => enviar(null))
   const fracaoTotal = (fracao * Number(pergunta.segundos_restantes)) / pergunta.tempo_resposta
   const urgente = segundos <= 5
-
-  const escolher = (i) => {
-    if (enviando) return
-    setSelecionada(i)
-    selecionadaRef.current = i
-  }
+  const enviando = enviado.current
 
   return (
     <div className="flex min-h-full flex-col animate-fade-up">
@@ -197,18 +190,18 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
       <p className="mt-5 text-lg font-bold text-rose-700">Vale {fmt(rodada.pontos)} pontos</p>
       <h2 className="mt-1 text-2xl font-extrabold leading-snug text-slate-900">{pergunta.pergunta}</h2>
 
-      <p className="mt-5 text-lg text-slate-700">{selecionada === null ? 'Toque na resposta certa:' : 'Confira e toque em CONFIRMAR:'}</p>
+      <p className="mt-5 text-lg text-slate-700">{enviando ? 'Enviando sua resposta…' : 'Toque na resposta certa:'}</p>
       <div className="mt-2 space-y-3">
         {pergunta.alternativas.map((alt, i) => {
-          const marcada = selecionada === i
+          const marcada = escolhida === i
           return (
             <button
               key={i}
-              onClick={() => escolher(i)}
+              onClick={() => enviar(i)}
               disabled={enviando}
               aria-pressed={marcada}
               className={`flex min-h-[64px] w-full items-center gap-3 rounded-2xl border-[3px] px-3 py-2 text-left transition active:scale-[.98] ${
-                marcada ? 'border-rose-600 bg-rose-50' : 'border-slate-200 bg-white'
+                marcada ? 'border-rose-600 bg-rose-50' : enviando ? 'border-slate-200 bg-white opacity-50' : 'border-slate-200 bg-white'
               }`}
             >
               <span
@@ -216,28 +209,12 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
                   marcada ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-800'
                 }`}
               >
-                {marcada ? <Check size={24} /> : String.fromCharCode(65 + i)}
+                {marcada ? <Loader2 size={24} className="animate-spin" /> : String.fromCharCode(65 + i)}
               </span>
               <span className="text-xl font-semibold leading-snug text-slate-900">{alt}</span>
             </button>
           )
         })}
-      </div>
-
-      <div className="sticky bottom-0 mt-auto bg-slate-50 pb-1 pt-5">
-        <BotaoGrande className="bg-emerald-600 text-white shadow-lg shadow-emerald-600/30" disabled={selecionada === null || enviando} onClick={() => enviar(selecionada)}>
-          {enviando ? (
-            <>
-              <Loader2 className="animate-spin" size={26} /> Enviando…
-            </>
-          ) : selecionada === null ? (
-            'Escolha uma resposta'
-          ) : (
-            <>
-              <Check size={28} /> CONFIRMAR RESPOSTA {String.fromCharCode(65 + selecionada)}
-            </>
-          )}
-        </BotaoGrande>
       </div>
     </div>
   )

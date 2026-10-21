@@ -291,7 +291,7 @@ function Ajuda({ voltar }) {
           <b>Como participar:</b> ouça a {RADIO.frequencia} FM. Quando o locutor anunciar, toque em <b>Responder agora</b>.
         </p>
         <p>
-          Depois de um anúncio rápido, a pergunta aparece. <b>Toque na resposta</b> e depois em <b>Confirmar</b>, antes do tempo acabar.
+          Depois de um anúncio rápido, a pergunta aparece. <b>Toque na resposta certa</b> antes do tempo acabar: ela é enviada na hora.
         </p>
       </Caixa>
       {estado === 'enviado' ? (
