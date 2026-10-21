@@ -16,6 +16,7 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
 - `005_agendamento.sql` — data, horário de início e de encerramento e modo manual ou automático em cada rodada.
   No fim ele mostra se o agendador ficou ativo. Se aparecer "ATENÇÃO", ative a extensão **pg_cron** em
   **Database → Extensions** e rode o arquivo de novo (pode rodar mais de uma vez).
+- `006_relogio.sql` — hora oficial do servidor, mostrada no app e no Painel Admin (sem ele, o app usa a hora do aparelho).
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
@@ -65,6 +66,9 @@ e procure a linha com erro no horário da tentativa. Causas comuns:
 - Numa rodada automática o botão manual continua valendo: **No ar** adianta ou reabre, **Encerrar** fecha antes.
   Se reabrir depois do horário de encerramento, quem fecha é a produção.
 - Abrir uma rodada (manual ou automática) tira do ar a que estava no ar antes.
+- O **Horário oficial** no topo do Painel Admin é a hora do servidor, a mesma usada pelo agendador. Se o relógio do
+  computador estiver diferente, aparece um aviso ("Este computador está 2 min adiantado"). Na aba **Ao vivo** há a
+  contagem para a rodada no ar fechar e para a próxima automática abrir.
 
 ## Reclamações e conferência
 - O ouvinte vê tudo o que respondeu em **Meu histórico** (tela inicial do app), com data, hora e **protocolo**.

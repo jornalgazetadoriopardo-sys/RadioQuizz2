@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from './auth.jsx'
 import { supabase } from './supabase.js'
+import { agoraServidor } from './relogio.js'
 
 const DataContext = createContext(null)
 
@@ -103,9 +104,9 @@ export function useRanking(limite = 10, gatilho) {
   return { ranking, eu: ranking?.find((l) => l.eu) ?? null, recarregar: carregar }
 }
 
-// Data e hora de Brasília (o celular pode estar em outro fuso).
-export const hojeSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-export const horaSP = () => new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false })
+// Data e hora de Brasília pelo relógio do servidor (o celular pode estar em outro fuso ou com a hora errada).
+export const hojeSP = () => agoraServidor().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+export const horaSP = () => agoraServidor().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false })
 // '2026-10-21' → '21/10'
 export const diaMes = (data) => (data ? `${data.slice(8, 10)}/${data.slice(5, 7)}` : '')
 /** "10:30" se for hoje (ou sem data), "22/10 às 10:30" se for outro dia. */

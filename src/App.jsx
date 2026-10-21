@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BatteryCharging, LayoutGrid, Monitor, Radio, Smartphone, Wifi } from 'lucide-react'
 import { RADIO } from './config.js'
+import { agoraServidor, fmtHora } from './relogio.js'
 import ListenerApp from './listener/ListenerApp.jsx'
 import Admin from './admin/Admin.jsx'
 
@@ -91,9 +92,9 @@ function BarraTopo({ visao, trocar }) {
 }
 
 function Celular({ children }) {
-  const [hora, setHora] = useState(() => new Date())
+  const [hora, setHora] = useState(agoraServidor)
   useEffect(() => {
-    const id = setInterval(() => setHora(new Date()), 15000)
+    const id = setInterval(() => setHora(agoraServidor()), 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -101,7 +102,7 @@ function Celular({ children }) {
     // No celular de verdade ocupa a tela toda; do tablet para cima aparece dentro da moldura.
     <div className="flex w-full flex-col bg-slate-50 sm:h-[800px] sm:w-[400px] sm:overflow-hidden sm:rounded-[3rem] sm:border-[10px] sm:border-slate-800 sm:shadow-2xl sm:shadow-slate-900/20">
       <div className="hidden items-center justify-between bg-slate-900 px-6 py-2 text-[11px] font-bold text-white sm:flex">
-        <span>{hora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+        <span>{fmtHora(hora, false)}</span>
         <span className="flex items-center gap-2">
           <span className="text-rose-400">{RADIO.frequencia} FM</span>
           <Wifi size={13} />

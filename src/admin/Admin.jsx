@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  BarChart3, Dices, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
+  BarChart3, Clock, Dices, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
   ShieldAlert, Square, Trash2, Trophy, Zap,
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
 import { Carregando, TelaLogin, useAuth } from '../auth.jsx'
 import { diaMes, fmt, hojeSP, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
+import { diferencaDoAparelhoMs, fmtFalta, fmtHora, instanteRodada, relogioSincronizado, useRelogio } from '../relogio.js'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
 import { Avatar, CORES, Card, ICONES_PATROCINADOR, Icone, Selo } from '../ui.jsx'
 
@@ -81,6 +82,7 @@ function Painel() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <RelogioOficial />
           <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-white px-4 py-2.5 shadow-sm ring-1 ring-slate-200">
             <Zap size={16} className="text-amber-500" />
             <span className="text-sm font-semibold">Modo apresentação</span>
@@ -117,6 +119,60 @@ function Painel() {
         {aba === 'feedback' && <FeedbackAdmin />}
       </div>
     </div>
+  )
+}
+
+/* ---------- relógio oficial ---------- */
+
+function RelogioOficial() {
+  const agora = useRelogio()
+  const dif = diferencaDoAparelhoMs()
+  const errado = relogioSincronizado() && Math.abs(dif) >= 5000
+  return (
+    <div className={`rounded-xl bg-white px-4 py-1.5 shadow-sm ring-1 ${errado ? 'ring-amber-400' : 'ring-slate-200'}`} title="Hora do servidor, a mesma usada pelo agendamento das rodadas">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <Clock size={12} /> Horário oficial (Brasília)
+      </p>
+      <p className="font-display text-2xl leading-tight tabular-nums">{fmtHora(agora)}</p>
+      {!relogioSincronizado() && <p className="text-[11px] text-slate-500">Usando o relógio deste computador</p>}
+      {errado && (
+        <p className="text-[11px] font-semibold text-amber-700">
+          Este computador está {fmtFalta(Math.abs(dif))} {dif < 0 ? 'adiantado' : 'atrasado'}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Contagem para a próxima mudança automática: a rodada no ar fechar ou a próxima automática abrir. */
+function ProximoAgendamento({ rodadas, rodadaNoAr }) {
+  const agora = useRelogio()
+  const fimNoAr = rodadaNoAr?.modo === 'automatico' ? instanteRodada(rodadaNoAr.data, rodadaNoAr.horario_fim) : null
+  const proxima = rodadas
+    .filter((r) => r.modo === 'automatico' && r.status === 'agendada')
+    .map((r) => ({ r, inicio: instanteRodada(r.data, r.horario) }))
+    .filter((x) => x.inicio && x.inicio > agora)
+    .sort((a, b) => a.inicio - b.inicio)[0]
+  if (!(fimNoAr && fimNoAr > agora) && !proxima) return null
+  return (
+    <Card className="flex flex-wrap gap-x-8 gap-y-2 p-4">
+      {fimNoAr && fimNoAr > agora && (
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">A rodada no ar fecha sozinha em</p>
+          <p className="font-display text-2xl tabular-nums text-rose-700">{fmtFalta(fimNoAr - agora)}</p>
+          <p className="text-xs text-slate-500">às {rodadaNoAr.horario_fim}</p>
+        </div>
+      )}
+      {proxima && (
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Próxima automática abre em</p>
+          <p className="font-display text-2xl tabular-nums">{fmtFalta(proxima.inicio - agora)}</p>
+          <p className="text-xs text-slate-500">
+            {proxima.r.titulo} · {diaMes(proxima.r.data)} às {proxima.r.horario}
+          </p>
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -179,6 +235,7 @@ function AoVivo() {
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
       <div className="space-y-4">
+        <ProximoAgendamento rodadas={rodadas} rodadaNoAr={rodadaNoAr} />
         {rodadaNoAr ? (
           <PlacarAoVivo
             rodada={rodadaNoAr}

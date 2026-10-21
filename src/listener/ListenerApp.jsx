@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Play, Radio, Trophy, XCircle } from 'lucide-react'
+import { CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Play, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
 import { fmt, hojeSP, quandoTexto, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { Avatar } from '../ui.jsx'
+import { fmtHora, useRelogio } from '../relogio.js'
 import Rodada from './Rodada.jsx'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora } from '../historico.jsx'
 
@@ -53,6 +54,7 @@ function Inicio({ irPara, eu }) {
 
   return (
     <div className="space-y-4">
+      <RelogioOuvinte />
       {/* Saudação e pontos */}
       <div className="flex items-center gap-3 px-1 pt-1">
         <Avatar nome={perfil.nome} destaque tamanho="w-14 h-14" />
@@ -133,6 +135,19 @@ function Inicio({ irPara, eu }) {
           <LogOut size={22} /> Sair
         </button>
       </div>
+    </div>
+  )
+}
+
+/** Hora oficial (do servidor), para o ouvinte conferir com a hora falada no rádio. */
+function RelogioOuvinte() {
+  const agora = useRelogio()
+  return (
+    <div className="flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-2.5 text-white">
+      <span className="flex items-center gap-2 text-base font-semibold">
+        <Clock size={20} /> Agora são
+      </span>
+      <span className="text-2xl font-extrabold tabular-nums">{fmtHora(agora)}</span>
     </div>
   )
 }
