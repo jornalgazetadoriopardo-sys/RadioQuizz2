@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Play, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
-import { fmt, useDados, useRanking } from '../store.jsx'
+import { fmt, hojeSP, quandoTexto, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { Avatar } from '../ui.jsx'
 import Rodada from './Rodada.jsx'
@@ -141,7 +141,7 @@ function ProximaPergunta({ rodada, claro = false }) {
   if (!rodada) return null
   return (
     <p className={`mt-4 rounded-2xl px-4 py-3 text-lg ${claro ? 'bg-white/20' : 'bg-slate-100 text-slate-800'}`}>
-      Próxima pergunta: <b className="text-xl">{rodada.horario}</b>
+      Próxima pergunta: <b className="text-xl">{quandoTexto(rodada)}</b>
     </p>
   )
 }
@@ -213,11 +213,14 @@ function Ranking({ ranking, voltar }) {
 
 function Grade({ voltar }) {
   const { rodadas, minhasRespostas } = useDados()
+  const hoje = hojeSP()
+  const deHoje = rodadas.filter((r) => !r.data || r.data === hoje)
   return (
     <>
       <Titulo voltar={voltar}>Perguntas de hoje</Titulo>
+      {deHoje.length === 0 && <Caixa className="p-6 text-center text-xl text-slate-700">Não há perguntas marcadas para hoje.</Caixa>}
       <div className="space-y-3">
-        {rodadas.map((r) => {
+        {deHoje.map((r) => {
           const resp = minhasRespostas[r.id]?.respondida_em ? minhasRespostas[r.id] : null
           const noAr = r.status === 'no_ar'
           const situacao = resp ? (resp.acertou ? 'Você acertou' : 'Você respondeu') : noAr ? 'No ar agora!' : r.status === 'encerrada' ? 'Encerrada' : 'Ainda vai começar'

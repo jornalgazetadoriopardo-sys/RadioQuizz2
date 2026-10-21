@@ -13,6 +13,9 @@ Projeto: `sxhwkkplxaotpxtgbzqe` — painel em https://supabase.com/dashboard/pro
 Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse arquivo no **SQL Editor**, na ordem do número:
 - `003_pontuacao_fixa.sql` — quem acerta ganha o valor cheio da rodada (sem bônus por velocidade).
 - `004_historico.sql` — histórico de participações com protocolo (auditoria para reclamações).
+- `005_agendamento.sql` — data, horário de início e de encerramento e modo manual ou automático em cada rodada.
+  No fim ele mostra se o agendador ficou ativo. Se aparecer "ATENÇÃO", ative a extensão **pg_cron** em
+  **Database → Extensions** e rode o arquivo de novo (pode rodar mais de uma vez).
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
@@ -54,6 +57,14 @@ e procure a linha com erro no horário da tentativa. Causas comuns:
 3. A produção clica em **No ar** numa rodada: a pergunta aparece na hora em todos os celulares.
 4. O placar ao vivo mostra quantos abriram, responderam e acertaram.
 5. Problemas encontrados: botão **Relatar problema** no app → aparecem na aba **Feedback** do painel.
+
+## Rodadas manuais e automáticas
+- **Manual:** a produção clica em **No ar** e em **Encerrar rodada** (aba Ao vivo). Data e horários são só informativos.
+- **Automático:** a rodada abre e fecha sozinha na data e nos horários cadastrados (horário de Brasília). O agendador
+  confere a cada 15 segundos (ou a cada minuto, conforme a versão do Supabase).
+- Numa rodada automática o botão manual continua valendo: **No ar** adianta ou reabre, **Encerrar** fecha antes.
+  Se reabrir depois do horário de encerramento, quem fecha é a produção.
+- Abrir uma rodada (manual ou automática) tira do ar a que estava no ar antes.
 
 ## Reclamações e conferência
 - O ouvinte vê tudo o que respondeu em **Meu histórico** (tela inicial do app), com data, hora e **protocolo**.

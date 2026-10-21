@@ -6,7 +6,7 @@ const DataContext = createContext(null)
 
 // Tabelas carregadas por todos e atualizadas em tempo real quando o admin muda algo.
 const CONSULTAS = {
-  rodadas: () => supabase.from('rodadas').select('*').order('horario'),
+  rodadas: () => supabase.from('rodadas').select('*').order('data', { ascending: true, nullsFirst: true }).order('horario'),
   patrocinadores: () => supabase.from('patrocinadores').select('*').eq('ativo', true).order('criado_em'),
   premios: () => supabase.from('premios').select('*').order('colocacao'),
   configuracoes: () => supabase.from('configuracoes').select('*').eq('id', 1).maybeSingle(),
@@ -63,9 +63,11 @@ export function DataProvider({ children }) {
   const value = useMemo(() => {
     const { rodadas } = dados
     const rodadaNoAr = rodadas.find((r) => r.status === 'no_ar') ?? null
-    const agora = new Date().toTimeString().slice(0, 5)
-    const agendadas = rodadas.filter((r) => r.status === 'agendada')
-    const proximaRodada = agendadas.find((r) => r.horario > (rodadaNoAr?.horario ?? agora)) ?? agendadas[0] ?? null
+    // Próxima = primeira agendada depois de agora (rodada sem data conta como de hoje).
+    const hoje = hojeSP()
+    const agora = `${hoje} ${horaSP()}`
+    const quando = (r) => `${r.data ?? hoje} ${r.horario}`
+    const proximaRodada = rodadas.filter((r) => r.status === 'agendada' && quando(r) > agora).sort((a, b) => quando(a).localeCompare(quando(b)))[0] ?? null
     return {
       ...dados,
       modoApresentacao: dados.configuracoes?.modo_apresentacao ?? false,
@@ -100,6 +102,14 @@ export function useRanking(limite = 10, gatilho) {
 
   return { ranking, eu: ranking?.find((l) => l.eu) ?? null, recarregar: carregar }
 }
+
+// Data e hora de Brasília (o celular pode estar em outro fuso).
+export const hojeSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+export const horaSP = () => new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false })
+// '2026-10-21' → '21/10'
+export const diaMes = (data) => (data ? `${data.slice(8, 10)}/${data.slice(5, 7)}` : '')
+/** "10:30" se for hoje (ou sem data), "22/10 às 10:30" se for outro dia. */
+export const quandoTexto = (r) => (r.data && r.data !== hojeSP() ? `${diaMes(r.data)} às ${r.horario}` : r.horario)
 
 // Pontos no formato brasileiro: 53,75
 export const fmt = (n) => Number(n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

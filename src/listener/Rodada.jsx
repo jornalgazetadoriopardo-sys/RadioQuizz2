@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Check, Loader2, X } from 'lucide-react'
 import { DURACOES } from '../config.js'
-import { fmt, useDados } from '../store.jsx'
+import { fmt, quandoTexto, useDados } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { CORES, Icone, useContagem } from '../ui.jsx'
 
@@ -251,7 +251,7 @@ function Resultado({ rodada, resultado, aoSair }) {
 
       {proximaRodada && proximaRodada.id !== rodada.id && (
         <p className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-center text-xl text-slate-800">
-          Próxima pergunta: <b>{proximaRodada.horario}</b>
+          Próxima pergunta: <b>{quandoTexto(proximaRodada)}</b>
         </p>
       )}
 

@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
 import { Carregando, TelaLogin, useAuth } from '../auth.jsx'
-import { fmt, useDados, useRanking } from '../store.jsx'
+import { diaMes, fmt, hojeSP, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
 import { Avatar, CORES, Card, ICONES_PATROCINADOR, Icone, Selo } from '../ui.jsx'
@@ -199,17 +199,20 @@ function AoVivo() {
       </div>
 
       <Card className="flex flex-col">
-        <div className="border-b border-slate-100 p-3 text-sm font-semibold text-slate-600">Rodadas de hoje</div>
+        <div className="border-b border-slate-100 p-3 text-sm font-semibold text-slate-600">Rodadas (as automáticas abrem e fecham sozinhas)</div>
         <div className="flex-1 divide-y divide-slate-100">
           {rodadas.map((r) => {
             const n = daRodada(r.id).filter((x) => x.respondida_em).length
             return (
               <div key={r.id} className={`flex items-center gap-3 px-3 py-2.5 ${r.status === 'no_ar' ? 'bg-rose-50/70' : ''}`}>
-                <span className="w-11 font-display text-sm">{r.horario}</span>
+                <span className="w-11 shrink-0 text-center">
+                  <span className="block font-display text-sm">{r.horario}</span>
+                  {r.data && <span className="block text-[10px] text-slate-500">{diaMes(r.data)}</span>}
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{r.titulo}</p>
-                  <p className="text-xs text-slate-500">
-                    {r.status === 'no_ar' ? 'No ar' : r.status === 'encerrada' ? 'Encerrada' : 'Agendada'} • {n} resposta(s)
+                  <p className="truncate text-xs text-slate-500">
+                    {r.status === 'no_ar' ? 'No ar' : r.status === 'encerrada' ? 'Encerrada' : 'Agendada'} • {agendaTexto(r)} • {n} resposta(s)
                   </p>
                 </div>
                 {r.status !== 'no_ar' && (
@@ -430,10 +433,34 @@ function sortearPontos(nivel) {
   return Math.round((min + Math.random() * (max - min)) * 100) / 100
 }
 
-const CAMPOS_RODADA = ['id', 'horario', 'categoria', 'titulo', 'descricao', 'nivel', 'pontos', 'tempo_resposta']
+const CAMPOS_RODADA = ['id', 'data', 'horario', 'horario_fim', 'modo', 'categoria', 'titulo', 'descricao', 'nivel', 'pontos', 'tempo_resposta']
+const HORA = /^\d{2}:\d{2}$/
+
+/** Texto curto do agendamento: "Automático · 21/10 · 10:30 às 10:40" ou "Manual · 10:30". */
+function agendaTexto(r) {
+  const dia = r.data ? `${diaMes(r.data)} · ` : ''
+  const fim = r.horario_fim ? ` às ${r.horario_fim}` : ''
+  return `${r.modo === 'automatico' ? 'Automático' : 'Manual'} · ${dia}${r.horario}${fim}`
+}
+
+function validarRodada(r) {
+  if (!r.titulo.trim()) return 'Preencha o título do card.'
+  if (!r.pergunta.trim()) return 'Preencha a pergunta.'
+  if (!r.alternativas.every((a) => a.trim())) return 'Preencha as quatro alternativas.'
+  return validarAgenda(r)
+}
+
+function validarAgenda(r) {
+  if (!HORA.test(r.horario ?? '')) return 'Informe o horário.'
+  if (r.horario_fim && !HORA.test(r.horario_fim)) return 'Horário de encerramento inválido.'
+  if (r.horario_fim && r.horario_fim <= r.horario) return 'O encerramento precisa ser depois do início (no mesmo dia).'
+  if (r.modo === 'automatico' && !r.data) return 'Rodada automática precisa de data.'
+  if (r.modo === 'automatico' && !r.horario_fim) return 'Rodada automática precisa do horário de encerramento.'
+  return ''
+}
 
 function Rodadas() {
-  const { itens, recarregar } = useTabela(() => supabase.from('rodadas').select('*, rodadas_conteudo(*)').order('horario'))
+  const { itens, recarregar } = useTabela(() => supabase.from('rodadas').select('*, rodadas_conteudo(*)').order('data', { ascending: true, nullsFirst: true }).order('horario'))
   // Junta a parte pública e a secreta da rodada num único formulário.
   const lista = itens?.map(({ rodadas_conteudo: emb, ...r }) => {
     const c = Array.isArray(emb) ? emb[0] : emb
@@ -448,6 +475,9 @@ function Rodadas() {
 
   const salvar = async (r) => {
     const rodada = Object.fromEntries(CAMPOS_RODADA.map((k) => [k, r[k]]))
+    // Campos vazios vão como "sem valor" (o banco recusa texto vazio em data e horário)
+    rodada.data = rodada.data || null
+    rodada.horario_fim = rodada.horario_fim || null
     const { error } = await supabase.from('rodadas').upsert(rodada)
     if (error) throw error
     const { error: e2 } = await supabase
@@ -464,7 +494,10 @@ function Rodadas() {
       salvar={salvar}
       novo={() => ({
         id: crypto.randomUUID(),
+        modo: 'manual',
+        data: hojeSP(),
         horario: '14:00',
+        horario_fim: '14:10',
         categoria: '',
         titulo: '',
         descricao: '',
@@ -476,24 +509,56 @@ function Rodadas() {
         correta: 0,
         explicacao: '',
       })}
-      validar={(r) => r.pergunta.trim() && r.titulo.trim() && r.alternativas.every((a) => a.trim()) && /^\d{2}:\d{2}$/.test(r.horario)}
+      validar={(r) => validarRodada(r) === ''}
       renderItem={(r) => (
         <div className="flex items-center gap-3">
-          <span className="w-11 font-display text-sm">{r.horario}</span>
+          <span className="w-11 shrink-0 text-center">
+            <span className="block font-display text-sm">{r.horario}</span>
+            {r.data && <span className="block text-[10px] text-slate-500">{diaMes(r.data)}</span>}
+          </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{r.titulo || 'Sem título'}</p>
-            <p className="text-xs text-slate-500">
-              {r.nivel} • +{fmt(r.pontos)} pts
-            </p>
+            <p className="truncate text-xs text-slate-500">{agendaTexto(r)} • +{fmt(r.pontos)} pts</p>
           </div>
-          {r.status === 'no_ar' && <Selo>No ar</Selo>}
+          {r.status === 'no_ar' ? <Selo>No ar</Selo> : r.modo === 'automatico' && <Selo cor="slate" className="normal-case">Auto</Selo>}
         </div>
       )}
       renderForm={(r, set) => (
         <div className="grid gap-4 sm:grid-cols-6">
-          <Campo rotulo="Horário" className="sm:col-span-2">
-            <Texto valor={r.horario} onChange={(v) => set('horario', v)} placeholder="10:30" />
-          </Campo>
+          <div className="space-y-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200 sm:col-span-6">
+            <span className="block text-xs font-semibold text-slate-600">Como a rodada entra no ar</span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                { id: 'manual', titulo: 'Manual', texto: 'A produção clica em "No ar" e em "Encerrar" no Ao vivo.' },
+                { id: 'automatico', titulo: 'Automático (agendado)', texto: 'Abre e fecha sozinha na data e nos horários abaixo.' },
+              ].map((m) => (
+                <label key={m.id} className={`flex cursor-pointer gap-3 rounded-lg bg-white p-3 ring-2 ${r.modo === m.id ? 'ring-rose-500' : 'ring-slate-200'}`}>
+                  <input type="radio" name="modo" checked={r.modo === m.id} onChange={() => set('modo', m.id)} className="mt-1 h-4 w-4 accent-rose-600" />
+                  <span>
+                    <span className="block text-sm font-semibold">{m.titulo}</span>
+                    <span className="block text-xs text-slate-500">{m.texto}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Campo rotulo={r.modo === 'automatico' ? 'Data' : 'Data (opcional)'}>
+                <input type="date" value={r.data ?? ''} onChange={(e) => set('data', e.target.value)} className={inputCls} />
+              </Campo>
+              <Campo rotulo={r.modo === 'automatico' ? 'Abre às' : 'Horário previsto'}>
+                <input type="time" value={r.horario ?? ''} onChange={(e) => set('horario', e.target.value)} className={inputCls} />
+              </Campo>
+              <Campo rotulo={r.modo === 'automatico' ? 'Encerra às' : 'Encerramento previsto (opcional)'}>
+                <input type="time" value={r.horario_fim ?? ''} onChange={(e) => set('horario_fim', e.target.value)} className={inputCls} />
+              </Campo>
+            </div>
+            <p className="text-xs text-slate-500">
+              {r.modo === 'automatico'
+                ? 'Horário de Brasília. O agendador confere a cada 15 segundos. O botão "No ar" continua valendo para adiantar ou reabrir, e "Encerrar" para fechar antes.'
+                : 'Nas rodadas manuais, a data e os horários só aparecem para o ouvinte como informação.'}
+            </p>
+            {validarAgenda(r) && <p className="text-xs font-semibold text-rose-600">{validarAgenda(r)}</p>}
+          </div>
           <Campo rotulo="Nível" className="sm:col-span-2">
             <select value={r.nivel} onChange={(e) => set('nivel', e.target.value)} className={inputCls}>
               {NIVEIS.map((n) => (
