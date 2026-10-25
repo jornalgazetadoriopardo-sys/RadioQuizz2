@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Bell, BellOff, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Play, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
-import { fmt, hojeSP, quandoTexto, useDados, useRanking } from '../store.jsx'
+import { fmt, fmtHorario, hojeSP, quandoTexto, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { Avatar } from '../ui.jsx'
-import { fmtHora, useRelogio } from '../relogio.js'
+import { fmtFalta, fmtHora, instanteRodada, useRelogio } from '../relogio.js'
 import { usePush } from '../push.js'
 import Rodada from './Rodada.jsx'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora } from '../historico.jsx'
@@ -83,6 +83,7 @@ function Inicio({ irPara, eu }) {
           <p className="mt-2 text-xl">
             Vale <b>{fmt(rodadaNoAr.pontos)} pontos</b>
           </p>
+          <FechaEm rodada={rodadaNoAr} />
           <button
             onClick={() => irPara('rodada')}
             className="mt-5 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl bg-white text-xl font-extrabold text-rose-700 shadow-md active:scale-[.98]"
@@ -238,6 +239,18 @@ function RelogioOuvinte() {
   )
 }
 
+/** Rodada automática: quanto tempo falta para fechar (pelo relógio do servidor). */
+function FechaEm({ rodada }) {
+  const agora = useRelogio()
+  const fim = rodada.modo === 'automatico' ? instanteRodada(rodada.data, rodada.horario_fim) : null
+  if (!fim || fim <= agora) return null
+  return (
+    <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-lg font-bold tabular-nums">
+      <Clock size={20} /> Fecha em {fmtFalta(fim - agora)}
+    </p>
+  )
+}
+
 function ProximaPergunta({ rodada, claro = false }) {
   if (!rodada) return null
   return (
@@ -327,7 +340,7 @@ function Grade({ voltar }) {
           const situacao = resp ? (resp.acertou ? 'Você acertou' : 'Você respondeu') : noAr ? 'No ar agora!' : r.status === 'encerrada' ? 'Encerrada' : 'Ainda vai começar'
           return (
             <Caixa key={r.id} className={`flex items-center gap-4 p-4 ${noAr && !resp ? 'ring-rose-500' : ''}`}>
-              <span className="text-2xl font-extrabold text-slate-900">{r.horario}</span>
+              <span className="text-2xl font-extrabold text-slate-900">{fmtHorario(r.horario)}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-lg font-semibold leading-snug text-slate-900">{r.titulo}</p>
                 <p className={`text-base font-semibold ${noAr && !resp ? 'text-rose-700' : resp?.acertou ? 'text-emerald-700' : 'text-slate-600'}`}>
@@ -453,7 +466,7 @@ function MeuHistorico({ voltar }) {
             <button onClick={() => setAberto(aberto === h.protocolo ? null : h.protocolo)} className="block w-full p-4 text-left">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-lg font-bold leading-snug text-slate-900">
-                  {h.rodada_horario} · {h.rodada_titulo}
+                  {fmtHorario(h.rodada_horario)} · {h.rodada_titulo}
                 </p>
                 <SeloSituacao h={h} grande />
               </div>

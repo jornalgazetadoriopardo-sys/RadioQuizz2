@@ -61,7 +61,7 @@ export function useRelogio() {
 export function instanteRodada(data, hora) {
   if (!data || !hora) return null
   // Brasília está em UTC−3 o ano todo (sem horário de verão desde 2019).
-  return new Date(`${data}T${hora}:00-03:00`)
+  return new Date(`${data}T${hora.length === 5 ? `${hora}:00` : hora}-03:00`)
 }
 
 /** "2 min 05 s" / "45 s" */

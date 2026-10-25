@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
 import { Carregando, TelaLogin, useAuth } from '../auth.jsx'
-import { diaMes, fmt, hojeSP, useDados, useRanking } from '../store.jsx'
+import { comSegundos, diaMes, fmt, fmtHorario, hojeSP, segundosEntre, somarSegundos, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { diferencaDoAparelhoMs, fmtFalta, fmtHora, instanteRodada, relogioSincronizado, useRelogio } from '../relogio.js'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
@@ -220,7 +220,7 @@ function ProximoAgendamento({ rodadas, rodadaNoAr }) {
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">A rodada no ar fecha sozinha em</p>
           <p className="font-display text-2xl tabular-nums text-rose-700">{fmtFalta(fimNoAr - agora)}</p>
-          <p className="text-xs text-slate-500">às {rodadaNoAr.horario_fim}</p>
+          <p className="text-xs text-slate-500">às {fmtHorario(rodadaNoAr.horario_fim)}</p>
         </div>
       )}
       {proxima && (
@@ -228,7 +228,7 @@ function ProximoAgendamento({ rodadas, rodadaNoAr }) {
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Próxima automática abre em</p>
           <p className="font-display text-2xl tabular-nums">{fmtFalta(proxima.inicio - agora)}</p>
           <p className="text-xs text-slate-500">
-            {proxima.r.titulo} · {diaMes(proxima.r.data)} às {proxima.r.horario}
+            {proxima.r.titulo} · {diaMes(proxima.r.data)} às {fmtHorario(proxima.r.horario)}
           </p>
         </div>
       )}
@@ -308,7 +308,7 @@ function AoVivo() {
             return (
               <div key={r.id} className={`flex items-center gap-3 px-3 py-2.5 ${r.status === 'no_ar' ? 'bg-rose-50/70' : ''}`}>
                 <span className="w-11 shrink-0 text-center">
-                  <span className="block font-display text-sm">{r.horario}</span>
+                  <span className="block font-display text-sm">{fmtHorario(r.horario)}</span>
                   {r.data && <span className="block text-[10px] text-slate-500">{diaMes(r.data)}</span>}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -358,7 +358,7 @@ function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
             {new Date(rodada.no_ar_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </Selo>
           <h2 className="mt-2 font-display text-xl">
-            {rodada.horario} • {rodada.titulo}
+            {fmtHorario(rodada.horario)} • {rodada.titulo}
           </h2>
           <p className="text-sm text-slate-500">
             {rodada.nivel} • vale {fmt(rodada.pontos)} pts • {rodada.tempo_resposta}s para responder
@@ -504,13 +504,15 @@ function sortearPontos(nivel) {
 }
 
 const CAMPOS_RODADA = ['id', 'data', 'horario', 'horario_fim', 'modo', 'categoria', 'titulo', 'descricao', 'nivel', 'pontos', 'tempo_resposta']
-const HORA = /^\d{2}:\d{2}$/
+const HORA = /^\d{2}:\d{2}(:\d{2})?$/
 
 /** Texto curto do agendamento: "Automático · 21/10 · 10:30 às 10:40" ou "Manual · 10:30". */
 function agendaTexto(r) {
   const dia = r.data ? `${diaMes(r.data)} · ` : ''
-  const fim = r.horario_fim ? ` às ${r.horario_fim}` : ''
-  return `${r.modo === 'automatico' ? 'Automático' : 'Manual'} · ${dia}${r.horario}${fim}`
+  const fim = r.horario_fim ? ` às ${fmtHorario(r.horario_fim)}` : ''
+  const dura = r.horario_fim ? segundosEntre(comSegundos(r.horario), comSegundos(r.horario_fim)) : NaN
+  const noAr = dura > 0 && dura < 600 ? ` (${dura} s no ar)` : ''
+  return `${r.modo === 'automatico' ? 'Automático' : 'Manual'} · ${dia}${fmtHorario(r.horario)}${fim}${noAr}`
 }
 
 function validarRodada(r) {
@@ -523,7 +525,7 @@ function validarRodada(r) {
 function validarAgenda(r) {
   if (!HORA.test(r.horario ?? '')) return 'Informe o horário.'
   if (r.horario_fim && !HORA.test(r.horario_fim)) return 'Horário de encerramento inválido.'
-  if (r.horario_fim && r.horario_fim <= r.horario) return 'O encerramento precisa ser depois do início (no mesmo dia).'
+  if (r.horario_fim && segundosEntre(comSegundos(r.horario), comSegundos(r.horario_fim)) <= 0) return 'O encerramento precisa ser depois do início (no mesmo dia).'
   if (r.modo === 'automatico' && !r.data) return 'Rodada automática precisa de data.'
   if (r.modo === 'automatico' && !r.horario_fim) return 'Rodada automática precisa do horário de encerramento.'
   return ''
@@ -547,7 +549,8 @@ function Rodadas() {
     const rodada = Object.fromEntries(CAMPOS_RODADA.map((k) => [k, r[k]]))
     // Campos vazios vão como "sem valor" (o banco recusa texto vazio em data e horário)
     rodada.data = rodada.data || null
-    rodada.horario_fim = rodada.horario_fim || null
+    rodada.horario = comSegundos(rodada.horario)
+    rodada.horario_fim = comSegundos(rodada.horario_fim) || null
     const { error } = await supabase.from('rodadas').upsert(rodada)
     if (error) throw error
     const { error: e2 } = await supabase
@@ -566,8 +569,8 @@ function Rodadas() {
         id: crypto.randomUUID(),
         modo: 'manual',
         data: hojeSP(),
-        horario: '14:00',
-        horario_fim: '14:10',
+        horario: '14:00:00',
+        horario_fim: '14:00:45',
         categoria: '',
         titulo: '',
         descricao: '',
@@ -583,7 +586,7 @@ function Rodadas() {
       renderItem={(r) => (
         <div className="flex items-center gap-3">
           <span className="w-11 shrink-0 text-center">
-            <span className="block font-display text-sm">{r.horario}</span>
+            <span className="block font-display text-sm">{fmtHorario(r.horario)}</span>
             {r.data && <span className="block text-[10px] text-slate-500">{diaMes(r.data)}</span>}
           </span>
           <div className="min-w-0 flex-1">
@@ -611,20 +614,53 @@ function Rodadas() {
                 </label>
               ))}
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Campo rotulo={r.modo === 'automatico' ? 'Data' : 'Data (opcional)'}>
                 <input type="date" value={r.data ?? ''} onChange={(e) => set('data', e.target.value)} className={inputCls} />
               </Campo>
-              <Campo rotulo={r.modo === 'automatico' ? 'Abre às' : 'Horário previsto'}>
-                <input type="time" value={r.horario ?? ''} onChange={(e) => set('horario', e.target.value)} className={inputCls} />
+              <Campo rotulo={r.modo === 'automatico' ? 'Abre às (h:min:s)' : 'Horário previsto (h:min:s)'}>
+                <input
+                  type="time"
+                  step="1"
+                  value={comSegundos(r.horario) ?? ''}
+                  onChange={(e) => {
+                    const ini = comSegundos(e.target.value)
+                    // mantém o mesmo tempo no ar quando o início muda
+                    const dura = segundosEntre(comSegundos(r.horario), comSegundos(r.horario_fim))
+                    set('horario', ini)
+                    if (dura > 0 && ini) set('horario_fim', somarSegundos(ini, dura))
+                  }}
+                  className={inputCls}
+                />
               </Campo>
-              <Campo rotulo={r.modo === 'automatico' ? 'Encerra às' : 'Encerramento previsto (opcional)'}>
-                <input type="time" value={r.horario_fim ?? ''} onChange={(e) => set('horario_fim', e.target.value)} className={inputCls} />
+              <Campo rotulo="Fica no ar por (segundos)">
+                <input
+                  type="number"
+                  min="1"
+                  max="86399"
+                  value={(() => {
+                    const d = segundosEntre(comSegundos(r.horario), comSegundos(r.horario_fim))
+                    return d > 0 ? d : ''
+                  })()}
+                  onChange={(e) => {
+                    const n = Number(e.target.value)
+                    set('horario_fim', n > 0 && r.horario ? somarSegundos(r.horario, n) : '')
+                  }}
+                  placeholder="ex.: 45"
+                  className={inputCls}
+                />
+              </Campo>
+              <Campo rotulo={r.modo === 'automatico' ? 'Encerra às (h:min:s)' : 'Encerramento previsto'}>
+                <input type="time" step="1" value={comSegundos(r.horario_fim) ?? ''} onChange={(e) => set('horario_fim', comSegundos(e.target.value))} className={inputCls} />
               </Campo>
             </div>
             <p className="text-xs text-slate-500">
+              O ouvinte só consegue <b>abrir</b> a pergunta enquanto a rodada está no ar. Quem abriu a tempo ainda tem o{' '}
+              <b>tempo para responder</b> de cada pergunta (campo abaixo) para enviar a resposta.
+            </p>
+            <p className="text-xs text-slate-500">
               {r.modo === 'automatico'
-                ? 'Horário de Brasília. O agendador confere a cada 15 segundos. O botão "No ar" continua valendo para adiantar ou reabrir, e "Encerrar" para fechar antes.'
+                ? 'Horário de Brasília, pelo relógio do servidor. O agendador confere a cada segundo. O botão "No ar" continua valendo para adiantar ou reabrir, e "Encerrar" para fechar antes.'
                 : 'Nas rodadas manuais, a data e os horários só aparecem para o ouvinte como informação.'}
             </p>
             {validarAgenda(r) && <p className="text-xs font-semibold text-rose-600">{validarAgenda(r)}</p>}
@@ -865,7 +901,7 @@ function HistoricoAdmin() {
                     <span className="block truncate text-[11px] text-slate-400">{h.email ?? (h.anonimo ? 'conta de teste (sem e-mail)' : '')}</span>
                   </span>
                   <span className="hidden min-w-0 truncate text-slate-600 sm:block">
-                    {h.rodada_horario} • {h.rodada_titulo}
+                    {fmtHorario(h.rodada_horario)} • {h.rodada_titulo}
                   </span>
                   <SeloSituacao h={h} />
                   <span className="hidden text-right font-bold tabular-nums sm:block">{fmt(h.pontos)}</span>
@@ -1222,7 +1258,7 @@ function DisparoManual({ rodadas, aoEnviar }) {
             {candidatas.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.data ? `${diaMes(r.data)} ` : ''}
-                {r.horario} · {r.titulo} {r.status === 'no_ar' ? '(no ar)' : ''}
+                {fmtHorario(r.horario)} · {r.titulo} {r.status === 'no_ar' ? '(no ar)' : ''}
               </option>
             ))}
           </select>

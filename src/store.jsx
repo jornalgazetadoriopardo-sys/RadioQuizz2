@@ -109,8 +109,22 @@ export const hojeSP = () => agoraServidor().toLocaleDateString('en-CA', { timeZo
 export const horaSP = () => agoraServidor().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false })
 // '2026-10-21' → '21/10'
 export const diaMes = (data) => (data ? `${data.slice(8, 10)}/${data.slice(5, 7)}` : '')
+/** "10:30:00" → "10:30"; "10:30:45" fica com os segundos. */
+export const fmtHorario = (h) => (h && h.length > 5 && h.endsWith(':00') ? h.slice(0, 5) : h ?? '')
 /** "10:30" se for hoje (ou sem data), "22/10 às 10:30" se for outro dia. */
-export const quandoTexto = (r) => (r.data && r.data !== hojeSP() ? `${diaMes(r.data)} às ${r.horario}` : r.horario)
+export const quandoTexto = (r) => (r.data && r.data !== hojeSP() ? `${diaMes(r.data)} às ${fmtHorario(r.horario)}` : fmtHorario(r.horario))
+/** "10:30" → "10:30:00" (o banco guarda sempre com segundos). */
+export const comSegundos = (h) => (h && h.length === 5 ? `${h}:00` : h)
+/** Segundos entre dois horários do mesmo dia ("10:30:00" → "10:30:45" = 45). */
+export const segundosEntre = (ini, fim) => {
+  const s = (h) => (h ? h.split(':').reduce((t, v, i) => t + Number(v) * [3600, 60, 1][i], 0) : NaN)
+  return s(fim) - s(ini)
+}
+/** Soma segundos a um horário ("10:30:00" + 45 → "10:30:45"), sem passar de 23:59:59. */
+export const somarSegundos = (h, n) => {
+  const total = Math.min(86399, Math.max(0, segundosEntre('00:00:00', comSegundos(h)) + n))
+  return [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60].map((v) => String(v).padStart(2, '0')).join(':')
+}
 
 // Pontos no formato brasileiro: 53,75
 export const fmt = (n) => Number(n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

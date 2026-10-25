@@ -53,12 +53,15 @@ async function obterChaves(db: Db) {
 const fmtPontos = (n: number) => Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // Brasília está em UTC−3 o ano todo (sem horário de verão desde 2019).
-const inicioDaRodada = (r: Rodada) => (r.data ? new Date(`${r.data}T${r.horario}:00-03:00`) : null)
+const comSegundos = (h: string) => (h.length === 5 ? `${h}:00` : h)
+const inicioDaRodada = (r: Rodada) => (r.data ? new Date(`${r.data}T${comSegundos(r.horario)}-03:00`) : null)
+// "10:30:00" → "10:30" (só mostra os segundos quando não são zero)
+const fmtHorario = (h: string) => (h.length > 5 && h.endsWith(':00') ? h.slice(0, 5) : h)
 
 /** Troca {horario}, {titulo}, {pontos} e {minutos} pelos dados da rodada. */
 function preencher(modelo: string, r: Rodada, minutos?: number) {
   return modelo
-    .replaceAll('{horario}', r.horario)
+    .replaceAll('{horario}', fmtHorario(r.horario))
     .replaceAll('{titulo}', r.titulo)
     .replaceAll('{pontos}', fmtPontos(r.pontos))
     .replaceAll('{minutos}', minutos ? String(minutos) : 'poucos')

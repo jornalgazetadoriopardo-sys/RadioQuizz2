@@ -20,6 +20,8 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
 - `007_notificacoes.sql` — notificações no celular. Depois dele é preciso publicar a função `enviar-push`
   (veja a seção **Notificações** abaixo).
 - `008_anuncios.sql` — anúncios de patrocinador em vídeo do YouTube e montados automaticamente (layouts prontos).
+- `009_segundos.sql` — horários das rodadas com segundos e agendador conferindo a cada segundo. Depois dele,
+  **publique de novo a função `enviar-push`** (Edge Functions → enviar-push → cole o arquivo atualizado → Deploy).
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
@@ -64,8 +66,12 @@ e procure a linha com erro no horário da tentativa. Causas comuns:
 
 ## Rodadas manuais e automáticas
 - **Manual:** a produção clica em **No ar** e em **Encerrar rodada** (aba Ao vivo). Data e horários são só informativos.
-- **Automático:** a rodada abre e fecha sozinha na data e nos horários cadastrados (horário de Brasília). O agendador
-  confere a cada 15 segundos (ou a cada minuto, conforme a versão do Supabase).
+- **Automático:** a rodada abre e fecha sozinha na data e nos horários cadastrados, com segundos (horário de Brasília).
+  Use **Fica no ar por (segundos)** para a rodada ficar aberta só alguns segundos — o encerramento é calculado sozinho.
+  O agendador confere a cada 1 segundo (ou a cada 15 s / 1 min, conforme a versão do Supabase; o resultado do
+  `009_segundos.sql` mostra qual ficou).
+- Enquanto a rodada está no ar, o ouvinte pode **abrir** a pergunta; quem abriu a tempo ainda tem o **tempo para
+  responder** da pergunta para enviar a resposta. O app mostra ao ouvinte "Fecha em X s".
 - Numa rodada automática o botão manual continua valendo: **No ar** adianta ou reabre, **Encerrar** fecha antes.
   Se reabrir depois do horário de encerramento, quem fecha é a produção.
 - Abrir uma rodada (manual ou automática) tira do ar a que estava no ar antes.
