@@ -19,6 +19,7 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
 - `006_relogio.sql` — hora oficial do servidor, mostrada no app e no Painel Admin (sem ele, o app usa a hora do aparelho).
 - `007_notificacoes.sql` — notificações no celular. Depois dele é preciso publicar a função `enviar-push`
   (veja a seção **Notificações** abaixo).
+- `008_anuncios.sql` — anúncios de patrocinador em vídeo do YouTube e montados automaticamente (layouts prontos).
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
@@ -108,6 +109,17 @@ chaves de envio e guarda no banco, num lugar que só o servidor lê.
   na aba Ao vivo).
 - **Últimos envios**: quantos celulares receberam cada aviso. Celulares que desinstalaram ou bloquearam são
   removidos sozinhos.
+
+## Anúncios dos patrocinadores
+Em **Painel Admin → Patrocinadores**, cada anunciante tem um tipo de anúncio:
+- **Simples:** logotipo (ou ícone), frase e descrição.
+- **Vídeo do YouTube:** cole o link do vídeo. No YouTube, deixe a visibilidade como **Não listado** e marque
+  **Permitir incorporação**. O vídeo começa sem som (regra dos celulares) e o ouvinte toca em "Ouvir com som".
+  Escolha horizontal ou vertical (Shorts) e ajuste o **tempo na tela** para a duração do vídeo (até 120 s).
+- **Montado pelo app:** logotipo em PNG, cores, título e descrição da promoção, preço (e preço antigo riscado),
+  validade, até 3 fotos e contatos (WhatsApp, telefone, endereço, Instagram, site). O app monta o anúncio num dos
+  4 layouts prontos: **Oferta em destaque**, **Cartão da loja**, **Promoção relâmpago** e **Vitrine**.
+A prévia ao lado mostra o anúncio como o ouvinte vai ver. Nada disso usa API paga.
 
 ## Reclamações e conferência
 - O ouvinte vê tudo o que respondeu em **Meu histórico** (tela inicial do app), com data, hora e **protocolo**.

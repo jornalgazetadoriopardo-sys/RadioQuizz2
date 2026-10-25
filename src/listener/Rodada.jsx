@@ -3,7 +3,8 @@ import { Check, Loader2, X } from 'lucide-react'
 import { DURACOES } from '../config.js'
 import { fmt, quandoTexto, useDados } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
-import { CORES, Icone, useContagem } from '../ui.jsx'
+import { useContagem } from '../ui.jsx'
+import { PecaAnuncio } from '../anuncios.jsx'
 
 // Fluxo de uma rodada: anuncio1 → pergunta → anuncio2 → resultado
 // O servidor marca a hora em que a pergunta abriu e confere a resposta (ver supabase/migrations).
@@ -53,7 +54,7 @@ export default function Rodada({ aoSair }) {
       {etapa === 'anuncio1' && (
         <Anuncio
           key="a1"
-          segundos={curto ?? DURACOES.anuncioPergunta}
+          segundos={curto ?? patrocinador1?.duracao_segundos ?? DURACOES.anuncioPergunta}
           patrocinador={patrocinador1}
           aoTerminar={abrirPergunta}
           titulo="Fique nesta tela"
@@ -79,7 +80,7 @@ export default function Rodada({ aoSair }) {
       {etapa === 'anuncio2' && (
         <Anuncio
           key="a2"
-          segundos={curto ?? DURACOES.anuncioGabarito}
+          segundos={curto ?? patrocinador2?.duracao_segundos ?? DURACOES.anuncioGabarito}
           patrocinador={patrocinador2}
           aoTerminar={() => setEtapa('resultado')}
           titulo="Resposta enviada!"
@@ -111,7 +112,6 @@ function BotaoGrande({ className = 'bg-slate-900 text-white', children, ...props
 
 function Anuncio({ segundos, patrocinador, aoTerminar, titulo, texto, cor }) {
   const { segundos: s, fracao, oculto } = useContagem(segundos, aoTerminar, { pausarQuandoOculto: true })
-  const c = CORES[patrocinador?.cor] ?? CORES.amber
   const aviso = cor === 'emerald' ? 'bg-emerald-600' : 'bg-rose-600'
   return (
     <div className="flex min-h-full flex-col animate-fade-up">
@@ -124,28 +124,11 @@ function Anuncio({ segundos, patrocinador, aoTerminar, titulo, texto, cor }) {
       </div>
       {oculto && <p className="mt-3 rounded-xl bg-amber-100 p-3 text-center text-lg font-bold text-amber-900">Contagem parada. Volte para esta tela.</p>}
 
-      <div className="flex flex-1 items-center py-6">
-        <div className="w-full rounded-3xl bg-white p-6 text-center ring-2 ring-slate-200">
-          <p className="text-base font-bold uppercase tracking-wide text-slate-600">Anúncio</p>
-          {patrocinador ? (
-            <>
-              {patrocinador.logo_url ? (
-                <img src={patrocinador.logo_url} alt={patrocinador.nome} className="mx-auto mt-3 h-24 max-w-[75%] object-contain" />
-              ) : (
-                <div className={`mx-auto mt-3 grid h-16 w-16 place-items-center rounded-2xl ${c.fundo} ${c.texto}`}>
-                  <Icone nome={patrocinador.icone} size={34} />
-                </div>
-              )}
-              <p className={`mt-4 text-xl font-extrabold uppercase ${c.titulo}`}>{patrocinador.nome}</p>
-              <p className="mt-3 text-2xl font-extrabold leading-snug text-slate-900">{patrocinador.slogan}</p>
-              <p className="mt-3 text-lg leading-relaxed text-slate-700">{patrocinador.descricao}</p>
-            </>
-          ) : (
-            <p className="mt-3 text-xl text-slate-700">Espaço publicitário disponível</p>
-          )}
-          <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-200">
-            <div className="h-full rounded-full bg-rose-600 transition-[width] duration-100 ease-linear" style={{ width: `${(1 - fracao) * 100}%` }} />
-          </div>
+      <div className="flex flex-1 flex-col justify-center gap-4 py-6">
+        <p className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
+        <PecaAnuncio p={patrocinador} />
+        <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-full rounded-full bg-rose-600 transition-[width] duration-100 ease-linear" style={{ width: `${(1 - fracao) * 100}%` }} />
         </div>
       </div>
     </div>

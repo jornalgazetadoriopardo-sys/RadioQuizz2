@@ -9,18 +9,21 @@ import { diaMes, fmt, hojeSP, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { diferencaDoAparelhoMs, fmtFalta, fmtHora, instanteRodada, relogioSincronizado, useRelogio } from '../relogio.js'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
-import { Avatar, CORES, Card, ICONES_PATROCINADOR, Icone, Selo } from '../ui.jsx'
+import { Avatar, CORES, Card, ICONES_PATROCINADOR, Icone, Selo, Vazio } from '../ui.jsx'
+import { Botao, Campo, Numero, Texto, inputCls, useTabela } from './comum.jsx'
+import Patrocinadores from './Patrocinadores.jsx'
 
 const ABAS = [
-  { id: 'aovivo', nome: 'Ao vivo', icone: RadioTower },
-  { id: 'rodadas', nome: 'Rodadas', icone: ListChecks },
-  { id: 'patrocinadores', nome: 'Patrocinadores', icone: Megaphone },
-  { id: 'premios', nome: 'Prêmios', icone: Gift },
-  { id: 'ranking', nome: 'Ranking', icone: Trophy },
-  { id: 'historico', nome: 'Histórico', icone: History },
-  { id: 'avisos', nome: 'Avisos', icone: Bell },
-  { id: 'feedback', nome: 'Feedback', icone: MessageSquare },
+  { id: 'aovivo', grupo: 'Programa', nome: 'Ao vivo', icone: RadioTower, descricao: 'Solte as perguntas no ar e acompanhe as respostas em tempo real.', cor: 'bg-rose-100 text-rose-600' },
+  { id: 'rodadas', grupo: 'Conteúdo', nome: 'Rodadas', icone: ListChecks, descricao: 'Perguntas, horários, pontos e agendamento de cada rodada.', cor: 'bg-violet-100 text-violet-600' },
+  { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Anúncios simples, vídeos do YouTube ou montados automaticamente.', cor: 'bg-amber-100 text-amber-600' },
+  { id: 'premios', grupo: 'Conteúdo', nome: 'Prêmios', icone: Gift, descricao: 'O que os primeiros colocados da semana ganham.', cor: 'bg-emerald-100 text-emerald-600' },
+  { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação da semana. Recomeça toda segunda-feira.', cor: 'bg-amber-100 text-amber-600' },
+  { id: 'historico', grupo: 'Ouvintes', nome: 'Histórico', icone: History, descricao: 'Todas as participações, para conferir reclamações.', cor: 'bg-sky-100 text-sky-600' },
+  { id: 'feedback', grupo: 'Ouvintes', nome: 'Feedback', icone: MessageSquare, descricao: 'Problemas e sugestões enviados pelo app.', cor: 'bg-slate-100 text-slate-600' },
+  { id: 'avisos', grupo: 'Comunicação', nome: 'Avisos', icone: Bell, descricao: 'Notificações no celular: automáticas, agendadas e avulsas.', cor: 'bg-rose-100 text-rose-600' },
 ]
+const GRUPOS = ['Programa', 'Conteúdo', 'Ouvintes', 'Comunicação']
 
 export default function Admin() {
   const { carregando, sessao, perfil, sair } = useAuth()
@@ -65,61 +68,116 @@ function Painel() {
   const { sair, perfil } = useAuth()
   const { modoApresentacao } = useDados()
   const [erroConfig, setErroConfig] = useState('')
+  const atual = ABAS.find((a) => a.id === aba)
 
   const alternarApresentacao = async () => {
     const { error } = await supabase.from('configuracoes').update({ modo_apresentacao: !modoApresentacao }).eq('id', 1)
     setErroConfig(error ? mensagemDeErro(error) : '')
   }
 
-  return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 font-display text-2xl">
-            <BarChart3 className="text-rose-600" /> Painel do Quiz
-          </h1>
-          <p className="text-sm text-slate-500">
-            Olá, {perfil.nome || 'admin'}. Solte as perguntas, acompanhe as respostas e gerencie o conteúdo.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <RelogioOficial />
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-white px-4 py-2.5 shadow-sm ring-1 ring-slate-200">
-            <Zap size={16} className="text-amber-500" />
-            <span className="text-sm font-semibold">Modo apresentação</span>
-            <span className="text-xs text-slate-500">(anúncios de 5s para todos)</span>
-            <input type="checkbox" checked={modoApresentacao} onChange={alternarApresentacao} className="h-4 w-4 accent-rose-600" />
-          </label>
-          <Botao variante="secundario" onClick={sair}>
-            <LogOut size={15} /> Sair
-          </Botao>
-        </div>
-      </div>
-      {erroConfig && <p className="mt-2 text-sm text-rose-600">{erroConfig}</p>}
+  const ModoApresentacao = ({ className = '' }) => (
+    <label className={`flex cursor-pointer items-center gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-200 ${className}`}>
+      <Zap size={18} className="shrink-0 text-amber-500" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">Modo apresentação</span>
+        <span className="block text-[11px] text-slate-500">Anúncios de 5 s para todos</span>
+      </span>
+      <input type="checkbox" checked={modoApresentacao} onChange={alternarApresentacao} className="h-5 w-5 accent-rose-600" />
+    </label>
+  )
 
-      <div className="mt-6 flex gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200 no-scrollbar">
-        {ABAS.map(({ id, nome, icone: I }) => (
-          <button
-            key={id}
-            onClick={() => setAba(id)}
-            className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              aba === id ? 'bg-rose-50 text-rose-700' : 'text-slate-500 hover:bg-slate-50'
-            }`}
-          >
-            <I size={16} /> {nome}
+  return (
+    <div className="flex min-h-[calc(100vh-70px)] bg-slate-50">
+      {/* Menu lateral (computador) */}
+      <aside className="sticky top-[70px] hidden h-[calc(100vh-70px)] w-72 shrink-0 flex-col border-r border-slate-200 bg-white px-5 py-6 lg:flex">
+        <div className="flex items-center gap-3 px-2">
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-md shadow-rose-600/30">
+            <BarChart3 size={22} />
+          </div>
+          <div className="min-w-0">
+            <p className="font-display text-lg leading-tight">Painel do Quiz</p>
+            <p className="truncate text-xs text-slate-500">Olá, {perfil.nome || 'admin'}</p>
+          </div>
+        </div>
+        <nav className="mt-8 flex-1 space-y-6 overflow-y-auto no-scrollbar">
+          {GRUPOS.map((g) => (
+            <div key={g}>
+              <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">{g}</p>
+              <div className="space-y-1">
+                {ABAS.filter((a) => a.grupo === g).map(({ id, nome, icone: I, cor }) => (
+                  <button
+                    key={id}
+                    onClick={() => setAba(id)}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                      aba === id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className={`grid h-8 w-8 place-items-center rounded-lg ${aba === id ? 'bg-white/15 text-white' : cor}`}>
+                      <I size={17} />
+                    </span>
+                    {nome}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+        <div className="space-y-3 border-t border-slate-100 pt-5">
+          <ModoApresentacao />
+          <button onClick={sair} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+            <LogOut size={17} /> Sair
           </button>
-        ))}
-      </div>
-      <div className="mt-4 animate-fade-up" key={aba}>
-        {aba === 'aovivo' && <AoVivo />}
-        {aba === 'rodadas' && <Rodadas />}
-        {aba === 'patrocinadores' && <Patrocinadores />}
-        {aba === 'premios' && <Premios />}
-        {aba === 'ranking' && <RankingAdmin />}
-        {aba === 'historico' && <HistoricoAdmin />}
-        {aba === 'avisos' && <AvisosAdmin />}
-        {aba === 'feedback' && <FeedbackAdmin />}
-      </div>
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 lg:px-10 lg:py-8">
+        {/* Menu (celular e tablet) */}
+        <div className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar lg:hidden">
+          {ABAS.map(({ id, nome, icone: I }) => (
+            <button
+              key={id}
+              onClick={() => setAba(id)}
+              className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ring-1 transition ${
+                aba === id ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-600 ring-slate-200'
+              }`}
+            >
+              <I size={15} /> {nome}
+            </button>
+          ))}
+        </div>
+
+        {/* Cabeçalho da página */}
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className={`grid h-14 w-14 place-items-center rounded-2xl ${atual.cor}`}>
+              <atual.icone size={28} />
+            </div>
+            <div>
+              <h1 className="font-display text-2xl leading-tight sm:text-3xl">{atual.nome}</h1>
+              <p className="mt-1 text-sm text-slate-500">{atual.descricao}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <RelogioOficial />
+            <ModoApresentacao className="lg:hidden" />
+            <Botao variante="secundario" className="lg:hidden" onClick={sair}>
+              <LogOut size={15} /> Sair
+            </Botao>
+          </div>
+        </div>
+        {erroConfig && <p className="-mt-4 mb-4 text-sm text-rose-600">{erroConfig}</p>}
+
+        <div className="animate-fade-up" key={aba}>
+          {aba === 'aovivo' && <AoVivo />}
+          {aba === 'rodadas' && <Rodadas />}
+          {aba === 'patrocinadores' && <Patrocinadores />}
+          {aba === 'premios' && <Premios />}
+          {aba === 'ranking' && <RankingAdmin />}
+          {aba === 'historico' && <HistoricoAdmin />}
+          {aba === 'avisos' && <AvisosAdmin />}
+          {aba === 'feedback' && <FeedbackAdmin />}
+        </div>
+      </main>
     </div>
   )
 }
@@ -180,29 +238,6 @@ function ProximoAgendamento({ rodadas, rodadaNoAr }) {
 
 /* ---------- dados do admin ---------- */
 
-function useTabela(consulta, { tempoReal } = {}) {
-  const [itens, setItens] = useState(null)
-  const [erro, setErro] = useState('')
-  const recarregar = useCallback(async () => {
-    const { data, error } = await consulta()
-    if (error) return setErro(mensagemDeErro(error))
-    setItens(data)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    recarregar()
-    if (!tempoReal) return
-    const canal = supabase
-      .channel(`admin-${tempoReal}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: tempoReal }, recarregar)
-      .subscribe()
-    return () => supabase.removeChannel(canal)
-  }, [recarregar, tempoReal])
-
-  return { itens, erro, recarregar }
-}
-
 /* ---------- aba Ao vivo ---------- */
 
 function AoVivo() {
@@ -246,7 +281,7 @@ function AoVivo() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
       <div className="space-y-4">
         <ProximoAgendamento rodadas={rodadas} rodadaNoAr={rodadaNoAr} />
         {rodadaNoAr ? (
@@ -258,11 +293,7 @@ function AoVivo() {
             ocupado={ocupado === 'encerrar'}
           />
         ) : (
-          <Card className="p-8 text-center">
-            <RadioTower className="mx-auto text-slate-300" size={40} />
-            <p className="mt-3 font-display text-lg">Nenhuma rodada no ar</p>
-            <p className="mt-1 text-sm text-slate-500">Escolha uma rodada ao lado e clique em "Colocar no ar" quando o locutor anunciar.</p>
-          </Card>
+          <Vazio icone={RadioTower} titulo="Nenhuma rodada no ar" texto='Escolha uma rodada ao lado e clique em "No ar" quando o locutor anunciar, ou deixe o agendamento abrir sozinho.' />
         )}
         {erro && <p className="text-sm font-semibold text-rose-600">{erro}</p>}
         {avisoMsg && <p className="text-sm font-semibold text-emerald-700">Aviso: {avisoMsg}</p>}
@@ -374,43 +405,6 @@ function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
 }
 
 /* ---------- componentes de formulário ---------- */
-
-function Campo({ rotulo, className = '', children }) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="mb-1 block text-xs font-semibold text-slate-600">{rotulo}</span>
-      {children}
-    </label>
-  )
-}
-
-const inputCls = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100'
-
-function Texto({ valor, onChange, multilinha, ...props }) {
-  return multilinha ? (
-    <textarea rows={3} value={valor ?? ''} onChange={(e) => onChange(e.target.value)} className={inputCls} {...props} />
-  ) : (
-    <input value={valor ?? ''} onChange={(e) => onChange(e.target.value)} className={inputCls} {...props} />
-  )
-}
-
-function Numero({ valor, onChange, ...props }) {
-  return <input type="number" value={valor} onChange={(e) => onChange(Number(e.target.value))} className={inputCls} {...props} />
-}
-
-function Botao({ variante = 'primario', className = '', children, ...props }) {
-  const v = {
-    primario: 'bg-rose-600 text-white hover:bg-rose-700',
-    secundario: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-    perigo: 'bg-white text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50',
-    escuro: 'bg-slate-900 text-white hover:bg-slate-800',
-  }
-  return (
-    <button className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-40 ${v[variante]} ${className}`} {...props}>
-      {children}
-    </button>
-  )
-}
 
 /** Lista à esquerda + formulário de edição à direita. */
 function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => true, salvar, recarregar }) {
@@ -686,116 +680,6 @@ function Rodadas() {
   )
 }
 
-function Patrocinadores() {
-  const { itens, recarregar } = useTabela(() => supabase.from('patrocinadores').select('*').order('criado_em'))
-  const [enviandoLogo, setEnviandoLogo] = useState(false)
-  const [erroLogo, setErroLogo] = useState('')
-
-  const enviarLogo = async (arquivo, id, set) => {
-    if (!arquivo) return
-    if (arquivo.size > 2 * 1024 * 1024) return setErroLogo('A imagem deve ter no máximo 2 MB.')
-    setEnviandoLogo(true)
-    setErroLogo('')
-    const caminho = `${id}/${Date.now()}-${arquivo.name.replace(/[^\w.-]/g, '_')}`
-    const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { upsert: true })
-    setEnviandoLogo(false)
-    if (error) return setErroLogo(mensagemDeErro(error))
-    set('logo_url', supabase.storage.from('patrocinadores').getPublicUrl(caminho).data.publicUrl)
-  }
-
-  return (
-    <Editor
-      tabela="patrocinadores"
-      itens={itens}
-      recarregar={recarregar}
-      novo={() => ({ id: crypto.randomUUID(), nome: '', slogan: '', descricao: '', icone: 'Store', cor: 'amber', logo_url: null, ativo: true })}
-      validar={(p) => p.nome.trim() && p.slogan.trim()}
-      renderItem={(p) => {
-        const c = CORES[p.cor] ?? CORES.amber
-        return (
-          <div className={`flex items-center gap-3 ${p.ativo ? '' : 'opacity-50'}`}>
-            <div className={`grid h-9 w-9 place-items-center overflow-hidden rounded-lg ${c.fundo} ${c.texto}`}>
-              {p.logo_url ? <img src={p.logo_url} alt="" className="h-full w-full object-contain" /> : <Icone nome={p.icone} size={18} />}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{p.nome || 'Sem nome'}</p>
-              <p className="truncate text-xs text-slate-500">{p.ativo ? p.slogan : 'Inativo'}</p>
-            </div>
-          </div>
-        )
-      }}
-      renderForm={(p, set) => {
-        const c = CORES[p.cor] ?? CORES.amber
-        return (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="Nome do anunciante">
-              <Texto valor={p.nome} onChange={(v) => set('nome', v)} />
-            </Campo>
-            <Campo rotulo="Slogan / oferta">
-              <Texto valor={p.slogan} onChange={(v) => set('slogan', v)} />
-            </Campo>
-            <Campo rotulo="Descrição" className="sm:col-span-2">
-              <Texto multilinha valor={p.descricao} onChange={(v) => set('descricao', v)} />
-            </Campo>
-            <div className="sm:col-span-2">
-              <span className="mb-1 block text-xs font-semibold text-slate-600">Logo (opcional — substitui o ícone)</span>
-              <div className="flex items-center gap-3">
-                {p.logo_url && <img src={p.logo_url} alt="" className="h-14 w-24 rounded-lg bg-slate-50 object-contain ring-1 ring-slate-200" />}
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold hover:bg-slate-200">
-                  {enviandoLogo ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
-                  {p.logo_url ? 'Trocar imagem' : 'Enviar imagem'}
-                  <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => enviarLogo(e.target.files[0], p.id, set)} />
-                </label>
-                {p.logo_url && (
-                  <button type="button" className="text-xs text-rose-600 underline" onClick={() => set('logo_url', null)}>
-                    Remover
-                  </button>
-                )}
-              </div>
-              {erroLogo && <p className="mt-1 text-xs text-rose-600">{erroLogo}</p>}
-            </div>
-            <div className="sm:col-span-2">
-              <span className="mb-1 block text-xs font-semibold text-slate-600">Ícone</span>
-              <div className="flex flex-wrap gap-2">
-                {ICONES_PATROCINADOR.map((nome) => (
-                  <button
-                    type="button"
-                    key={nome}
-                    onClick={() => set('icone', nome)}
-                    className={`grid h-10 w-10 place-items-center rounded-lg ring-1 ${p.icone === nome ? `${c.fundo} ${c.texto} ring-current` : 'text-slate-500 ring-slate-200'}`}
-                  >
-                    <Icone nome={nome} size={18} />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <span className="mb-1 block text-xs font-semibold text-slate-600">Cor</span>
-              <div className="flex gap-2">
-                {Object.keys(CORES).map((cor) => (
-                  <button
-                    type="button"
-                    key={cor}
-                    onClick={() => set('cor', cor)}
-                    className={`h-8 w-8 rounded-full ${CORES[cor].fundo} ring-2 ${p.cor === cor ? 'ring-slate-900' : 'ring-slate-200'}`}
-                    aria-label={cor}
-                  >
-                    <span className={`mx-auto block h-3 w-3 rounded-full bg-current ${CORES[cor].texto}`} />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <label className="flex items-center gap-2 self-end text-sm font-semibold">
-              <input type="checkbox" checked={p.ativo} onChange={(e) => set('ativo', e.target.checked)} className="h-4 w-4 accent-rose-600" />
-              Ativo (aparece nos anúncios)
-            </label>
-          </div>
-        )
-      }}
-    />
-  )
-}
-
 function Premios() {
   const { itens, recarregar } = useTabela(() => supabase.from('premios').select('*').order('colocacao'))
   const { patrocinadores } = useDados()
@@ -846,7 +730,7 @@ function RankingAdmin() {
         <p className="font-semibold">Ranking da semana</p>
         <p className="text-xs text-slate-500">Recomeça automaticamente toda segunda-feira à 0h (horário de Brasília).</p>
       </div>
-      {ranking.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Ninguém pontuou nesta semana ainda.</p>}
+      {ranking.length === 0 && <Vazio icone={Trophy} titulo="Ninguém pontuou nesta semana" texto="O ranking aparece aqui assim que alguém acertar uma pergunta." className="m-4 shadow-none ring-0" />}
       <div className="divide-y divide-slate-100">
         {ranking.map((o) => (
           <div key={o.posicao} className="flex items-center gap-3 px-4 py-2.5">
@@ -867,7 +751,7 @@ function FeedbackAdmin() {
   if (!itens) return <Carregando />
   return (
     <Card className="divide-y divide-slate-100">
-      {itens.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhum relato recebido ainda.</p>}
+      {itens.length === 0 && <Vazio icone={MessageSquare} titulo="Nenhum relato recebido" texto='Quando um ouvinte tocar em "Ajuda" e mandar uma mensagem, ela aparece aqui.' className="m-4 shadow-none ring-0" />}
       {itens.map((f) => (
         <div key={f.id} className="p-4">
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -967,7 +851,7 @@ function HistoricoAdmin() {
           <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
             {itens.length} participação(ões) encontrada(s). O registro guarda a pergunta como estava no momento e não é apagado ao zerar o ranking.
           </p>
-          {itens.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhuma participação no período.</p>}
+          {itens.length === 0 && <Vazio icone={History} titulo="Nenhuma participação no período" texto="Mude as datas ou a busca para ver outras participações." className="m-4 shadow-none ring-0" />}
           <div className="divide-y divide-slate-100">
             {itens.map((h) => (
               <div key={h.protocolo}>
@@ -1125,7 +1009,7 @@ function AvisosAdmin() {
             </button>
           </div>
           {!envios.itens && <Carregando />}
-          {envios.itens?.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhum aviso enviado ainda.</p>}
+          {envios.itens?.length === 0 && <Vazio icone={Bell} titulo="Nenhum aviso enviado" texto="Os envios automáticos e avulsos aparecem aqui." className="m-3 py-8 shadow-none ring-0" />}
           <div className="divide-y divide-slate-100">
             {envios.itens?.map((e) => (
               <div key={e.id} className="px-3 py-2.5">

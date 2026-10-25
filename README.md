@@ -12,7 +12,8 @@ responde pelo celular, acumula pontos e concorre a prêmios oferecidos por patro
   Cada pergunta tem um **tempo limite** definido pelo admin, medido **no servidor** — resposta fora do tempo vale 0
   e o gabarito nunca vai para o celular antes da resposta.
 - **Painel Admin** (`/#admin`): aba **Ao vivo** (soltar/encerrar a pergunta e placar em tempo real), cadastro de
-  rodadas (data, horário de início e de encerramento, modo **manual** ou **automático/agendado**), patrocinadores (com logo) e prêmios, ranking, **histórico de todos** (busca, filtro por data e exportação para planilha), feedback da equipe e
+  rodadas (data, horário de início e de encerramento, modo **manual** ou **automático/agendado**), patrocinadores
+  (anúncio simples, **vídeo do YouTube** ou **montado pelo app** em 4 layouts prontos, com prévia ao vivo) e prêmios, ranking, **histórico de todos** (busca, filtro por data e exportação para planilha), feedback da equipe e
   **Modo apresentação** (anúncios de 5 s) e **Avisos** (notificações no celular: "no ar", lembrete antes da
   pergunta, mensagens avulsas ou agendadas e disparo manual; textos editáveis).
 - **Notificações (Web Push):** o ouvinte toca em "Quero ser avisado"; quem envia é a função
