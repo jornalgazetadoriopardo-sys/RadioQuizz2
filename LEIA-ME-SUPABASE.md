@@ -22,6 +22,11 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
 - `008_anuncios.sql` — anúncios de patrocinador em vídeo do YouTube e montados automaticamente (layouts prontos).
 - `009_segundos.sql` — horários das rodadas com segundos e agendador conferindo a cada segundo. Depois dele,
   **publique de novo a função `enviar-push`** (Edge Functions → enviar-push → cole o arquivo atualizado → Deploy).
+- `010_corrige_agendamento.sql` — corrige rodadas automáticas que não abriam: uma rodada que já tinha sido
+  encerrada (num teste ou porque o horário passou) agora volta a ficar "agendada" quando você muda a data ou o
+  horário dela, e encerrar à mão antes do horário não cancela mais o agendamento. Cria também o
+  **Diagnóstico do agendamento** (Painel Admin → Ao vivo). No fim ele mostra se o agendador está ATIVO e
+  quantas vezes conferiu no último minuto.
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
@@ -75,6 +80,11 @@ e procure a linha com erro no horário da tentativa. Causas comuns:
 - Numa rodada automática o botão manual continua valendo: **No ar** adianta ou reabre, **Encerrar** fecha antes.
   Se reabrir depois do horário de encerramento, quem fecha é a produção.
 - Abrir uma rodada (manual ou automática) tira do ar a que estava no ar antes.
+- Testou uma rodada automática com **No ar** e **Encerrar** antes do horário dela? Ela continua agendada e abre
+  no horário. Se encerrar durante o horário dela, ela fica encerrada (para reabrir, mude o horário ou use **No ar**).
+- **Diagnóstico do agendamento** (aba Ao vivo): mostra se o agendador do banco está rodando, a última conferência,
+  erros e como o banco vê cada rodada automática. **Conferir agenda agora** abre/fecha na hora o que estiver no
+  horário.
 - O **Horário oficial** no topo do Painel Admin é a hora do servidor, a mesma usada pelo agendador. Se o relógio do
   computador estiver diferente, aparece um aviso ("Este computador está 2 min adiantado"). Na aba **Ao vivo** há a
   contagem para a rodada no ar fechar e para a próxima automática abrir.

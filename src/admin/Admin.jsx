@@ -298,6 +298,7 @@ function AoVivo() {
         {erro && <p className="text-sm font-semibold text-rose-600">{erro}</p>}
         {avisoMsg && <p className="text-sm font-semibold text-emerald-700">Aviso: {avisoMsg}</p>}
         {respostas.erro && <p className="text-sm text-rose-600">{respostas.erro}</p>}
+        <DiagnosticoAgendamento />
       </div>
 
       <Card className="flex flex-col">
@@ -338,6 +339,100 @@ function AoVivo() {
         </div>
       </Card>
     </div>
+  )
+}
+
+/** Mostra se o agendador do banco está rodando e como o banco vê as rodadas automáticas. */
+function DiagnosticoAgendamento() {
+  const [d, setD] = useState(null)
+  const [erro, setErro] = useState('')
+  const [ocupado, setOcupado] = useState(false)
+  const agora = useRelogio()
+
+  const carregar = useCallback(async () => {
+    const { data, error } = await supabase.rpc('diagnostico_agendamento')
+    setErro(error ? mensagemDeErro(error) : '')
+    if (!error) setD(data)
+  }, [])
+
+  useEffect(() => {
+    carregar()
+    const t = setInterval(carregar, 15000)
+    return () => clearInterval(t)
+  }, [carregar])
+
+  const conferir = async () => {
+    setOcupado(true)
+    const { error } = await supabase.rpc('conferir_agenda_agora')
+    setOcupado(false)
+    if (error) return setErro(mensagemDeErro(error))
+    carregar()
+  }
+
+  const ultima = d?.ultimas_execucoes?.[0]
+  const ultimaHa = ultima ? agora - new Date(ultima.inicio) : null
+  const falhou = d?.ultimas_execucoes?.find((x) => x.status === 'failed')
+  let estado = { cor: 'emerald', texto: 'Agendador funcionando' }
+  if (!d) estado = null
+  else if (!d.pg_cron) estado = { cor: 'rose', texto: 'Agendador não instalado: ative a extensão pg_cron e rode o 009_segundos.sql' }
+  else if (!d.job) estado = { cor: 'rose', texto: 'Agendador não encontrado: rode o 009_segundos.sql' }
+  else if (!d.job.ativo) estado = { cor: 'rose', texto: 'Agendador desligado no banco' }
+  else if (!ultima || ultimaHa > 3 * 60_000) estado = { cor: 'amber', texto: 'O agendador não está rodando (sem conferências recentes)' }
+  else if (ultima.status === 'failed') estado = { cor: 'rose', texto: 'O agendador está dando erro' }
+  const corCls = { emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-200', amber: 'bg-amber-50 text-amber-800 ring-amber-200', rose: 'bg-rose-50 text-rose-800 ring-rose-200' }
+  const status = { no_ar: 'No ar', encerrada: 'Encerrada', agendada: 'Agendada' }
+
+  return (
+    <Card className="p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-slate-700">Diagnóstico do agendamento</p>
+        <div className="flex gap-2">
+          <Botao variante="secundario" className="px-2.5 py-1.5 text-xs" onClick={carregar}>
+            <RotateCcw size={14} /> Atualizar
+          </Botao>
+          <Botao variante="escuro" className="px-2.5 py-1.5 text-xs" disabled={ocupado} onClick={conferir} title="Abre ou fecha agora as rodadas automáticas conforme o horário">
+            {ocupado ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />} Conferir agenda agora
+          </Botao>
+        </div>
+      </div>
+      {erro && (
+        <p className="mt-2 text-sm text-rose-600">
+          {erro} {/schema cache|diagnostico/i.test(erro) && '— rode o arquivo 010_corrige_agendamento.sql no SQL Editor.'}
+        </p>
+      )}
+      {estado && (
+        <div className={`mt-3 rounded-xl px-3 py-2 text-sm ring-1 ${corCls[estado.cor]}`}>
+          <p className="font-semibold">{estado.texto}</p>
+          {d.job && (
+            <p className="text-xs">
+              Confere a cada {d.job.frequencia.replace('* * * * *', '1 minuto').replace('seconds', 's')}
+              {ultima && ` · última conferência há ${fmtFalta(Math.max(0, ultimaHa))}`}
+              {d.erros_recentes > 0 && ` · ${d.erros_recentes} erro(s) na última hora`}
+            </p>
+          )}
+          {falhou?.mensagem && <p className="mt-1 break-words font-mono text-[11px]">{falhou.mensagem}</p>}
+        </div>
+      )}
+      {d?.rodadas?.length > 0 && (
+        <div className="mt-3 divide-y divide-slate-100 text-xs">
+          {d.rodadas.map((r, i) => {
+            const abre = r.abre_em && new Date(r.abre_em)
+            const fecha = r.fecha_em && new Date(r.fecha_em)
+            const presa = (r.status === 'encerrada' && fecha > agora && abre > agora) || (r.status === 'agendada' && abre <= agora && fecha > agora)
+            return (
+              <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5">
+                <span className="min-w-0 flex-1 truncate font-semibold">{r.titulo}</span>
+                <span className="tabular-nums text-slate-500">
+                  {diaMes(r.data)} {fmtHorario(r.horario)} → {fmtHorario(r.horario_fim)}
+                </span>
+                <span className={`font-semibold ${r.status === 'no_ar' ? 'text-rose-600' : 'text-slate-600'}`}>{status[r.status] ?? r.status}</span>
+                {presa && <span className="font-semibold text-amber-700">⚠ deveria estar {r.status === 'agendada' ? 'no ar' : 'agendada'}</span>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
   )
 }
 

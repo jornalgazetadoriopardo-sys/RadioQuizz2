@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from './auth.jsx'
 import { supabase } from './supabase.js'
-import { agoraServidor } from './relogio.js'
+import { agoraServidor, instanteRodada } from './relogio.js'
 
 const DataContext = createContext(null)
 
@@ -48,18 +48,41 @@ export function DataProvider({ children }) {
         if (tabela === 'rodadas') recarregarMinhasRespostas()
       })
     }
-    canal.subscribe()
+    let conectado = false
+    canal.subscribe((status) => {
+      conectado = status === 'SUBSCRIBED'
+    })
 
-    // Rede de segurança: se o tempo real cair (celular em segundo plano), atualiza ao voltar para o app.
+    // Rede de segurança: se o tempo real cair, confere as rodadas a cada 5 s até voltar;
+    // e sempre atualiza ao voltar para o app (celular em segundo plano).
+    const vigia = setInterval(() => !conectado && document.visibilityState === 'visible' && recarregar('rodadas'), 5000)
     const aoVoltar = () => document.visibilityState === 'visible' && recarregar('rodadas')
     document.addEventListener('visibilitychange', aoVoltar)
 
     return () => {
       ativo = false
+      clearInterval(vigia)
       supabase.removeChannel(canal)
       document.removeEventListener('visibilitychange', aoVoltar)
     }
   }, [usuarioId, recarregar, recarregarMinhasRespostas])
+
+  // Na hora em que uma rodada automática deve abrir ou fechar, confere de novo (logo depois do agendador),
+  // mesmo que o aviso em tempo real não chegue.
+  useEffect(() => {
+    if (!usuarioId) return
+    const agora = agoraServidor().getTime()
+    const proxima = dados.rodadas
+      .filter((r) => r.modo === 'automatico' && r.status !== 'encerrada')
+      .flatMap((r) => [instanteRodada(r.data, r.horario), instanteRodada(r.data, r.horario_fim)])
+      .map((d) => d?.getTime())
+      .filter((t) => t && t > agora)
+      .sort((a, b) => a - b)[0]
+    if (!proxima || proxima - agora > 6 * 3600_000) return
+    const espera = proxima - agora
+    const timers = [1500, 5000].map((folga) => setTimeout(() => recarregar('rodadas'), espera + folga))
+    return () => timers.forEach(clearTimeout)
+  }, [usuarioId, dados.rodadas, recarregar])
 
   const value = useMemo(() => {
     const { rodadas } = dados
