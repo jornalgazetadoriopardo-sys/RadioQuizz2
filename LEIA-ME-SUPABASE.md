@@ -17,6 +17,8 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
   No fim ele mostra se o agendador ficou ativo. Se aparecer "ATENÇÃO", ative a extensão **pg_cron** em
   **Database → Extensions** e rode o arquivo de novo (pode rodar mais de uma vez).
 - `006_relogio.sql` — hora oficial do servidor, mostrada no app e no Painel Admin (sem ele, o app usa a hora do aparelho).
+- `007_notificacoes.sql` — notificações no celular. Depois dele é preciso publicar a função `enviar-push`
+  (veja a seção **Notificações** abaixo).
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
@@ -69,6 +71,43 @@ e procure a linha com erro no horário da tentativa. Causas comuns:
 - O **Horário oficial** no topo do Painel Admin é a hora do servidor, a mesma usada pelo agendador. Se o relógio do
   computador estiver diferente, aparece um aviso ("Este computador está 2 min adiantado"). Na aba **Ao vivo** há a
   contagem para a rodada no ar fechar e para a próxima automática abrir.
+
+## Notificações no celular
+**1. Banco:** rode `supabase/migrations/007_notificacoes.sql` no SQL Editor. A última linha deve dizer
+"OK: banco pronto". Se disser "ATENÇÃO", ative a extensão indicada (**pg_net** ou **pg_cron**) em
+**Database → Extensions** e rode o arquivo de novo.
+
+**2. Função de envio** (uma vez só; repita quando a função for atualizada no GitHub):
+1. No Supabase, abra **Edge Functions → Deploy a new function → Via Editor**.
+2. Dê o nome exato **`enviar-push`**.
+3. Apague o exemplo, cole todo o conteúdo de [`supabase/functions/enviar-push/index.ts`](supabase/functions/enviar-push/index.ts)
+   e clique em **Deploy**.
+4. Nos detalhes da função, **desligue a verificação de JWT** ("Verify JWT" / "Enforce JWT verification").
+   O banco chama a função sem login; ela se protege sozinha (só avisa rodada que está no ar, cada aviso sai
+   uma vez, e mensagens do painel exigem login de admin).
+
+Quem usa a linha de comando pode, em vez disso, rodar:
+`supabase functions deploy enviar-push --no-verify-jwt --project-ref sxhwkkplxaotpxtgbzqe`
+
+Não é preciso criar nenhuma chave: na primeira vez que alguém toca em "Quero ser avisado", a função gera as
+chaves de envio e guarda no banco, num lugar que só o servidor lê.
+
+**3. Teste:**
+1. Num celular **Android**, abra o link no **Chrome** (aba normal, não anônima), entre e toque em
+   **Quero ser avisado** → **Permitir**.
+2. No **Painel Admin → Avisos**, "Celulares inscritos" passa a mostrar 1. Envie uma **mensagem avulsa** de teste.
+3. **iPhone:** só funciona no iOS 16.4 ou mais novo, e a pessoa precisa antes tocar em **Compartilhar →
+   Adicionar à Tela de Início** e abrir o quiz pelo ícone novo. O app mostra essas instruções sozinho.
+
+**O que o admin controla (aba Avisos):**
+- **Aviso "no ar"**: liga/desliga e edita o texto. Sai quando a rodada entra no ar (botão ou agendamento).
+- **Lembrete**: liga/desliga, quantos minutos antes e o texto. Vale para rodadas com data e horário.
+- Nos textos, `{horario}`, `{titulo}`, `{pontos}` e `{minutos}` são trocados pelos dados da rodada.
+- **Mensagem avulsa**: texto livre, enviada na hora ou **agendada** para data e hora (dá para cancelar).
+- **Disparo manual**: escolhe a rodada e clica em **Avisar agora** (também há o botão **Avisar** em cada rodada
+  na aba Ao vivo).
+- **Últimos envios**: quantos celulares receberam cada aviso. Celulares que desinstalaram ou bloquearam são
+  removidos sozinhos.
 
 ## Reclamações e conferência
 - O ouvinte vê tudo o que respondeu em **Meu histórico** (tela inicial do app), com data, hora e **protocolo**.

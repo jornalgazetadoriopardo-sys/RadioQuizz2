@@ -13,7 +13,10 @@ responde pelo celular, acumula pontos e concorre a prêmios oferecidos por patro
   e o gabarito nunca vai para o celular antes da resposta.
 - **Painel Admin** (`/#admin`): aba **Ao vivo** (soltar/encerrar a pergunta e placar em tempo real), cadastro de
   rodadas (data, horário de início e de encerramento, modo **manual** ou **automático/agendado**), patrocinadores (com logo) e prêmios, ranking, **histórico de todos** (busca, filtro por data e exportação para planilha), feedback da equipe e
-  **Modo apresentação** (anúncios de 5 s).
+  **Modo apresentação** (anúncios de 5 s) e **Avisos** (notificações no celular: "no ar", lembrete antes da
+  pergunta, mensagens avulsas ou agendadas e disparo manual; textos editáveis).
+- **Notificações (Web Push):** o ouvinte toca em "Quero ser avisado"; quem envia é a função
+  `supabase/functions/enviar-push` (Supabase Edge Function).
 
 Backend: **Supabase** (PostgreSQL + Auth + Realtime + Storage). Como configurar: [LEIA-ME-SUPABASE.md](LEIA-ME-SUPABASE.md).
 Banco de dados e regras de segurança: `supabase/migrations/`. Nome e frequência da rádio, formas de login e

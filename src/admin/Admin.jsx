@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  BarChart3, Clock, Dices, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
+  BarChart3, Bell, Clock, Dices, Send, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
   ShieldAlert, Square, Trash2, Trophy, Zap,
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
@@ -18,6 +18,7 @@ const ABAS = [
   { id: 'premios', nome: 'Prêmios', icone: Gift },
   { id: 'ranking', nome: 'Ranking', icone: Trophy },
   { id: 'historico', nome: 'Histórico', icone: History },
+  { id: 'avisos', nome: 'Avisos', icone: Bell },
   { id: 'feedback', nome: 'Feedback', icone: MessageSquare },
 ]
 
@@ -116,6 +117,7 @@ function Painel() {
         {aba === 'premios' && <Premios />}
         {aba === 'ranking' && <RankingAdmin />}
         {aba === 'historico' && <HistoricoAdmin />}
+        {aba === 'avisos' && <AvisosAdmin />}
         {aba === 'feedback' && <FeedbackAdmin />}
       </div>
     </div>
@@ -209,6 +211,7 @@ function AoVivo() {
   const conteudos = useTabela(() => supabase.from('rodadas_conteudo').select('rodada_id, alternativas, correta'))
   const [ocupado, setOcupado] = useState(null)
   const [erro, setErro] = useState('')
+  const [avisoMsg, setAvisoMsg] = useState('')
 
   const executar = async (chave, fn) => {
     setOcupado(chave)
@@ -225,6 +228,16 @@ function AoVivo() {
     const jaTem = daRodada(r.id).length
     const limpar = jaTem > 0 && confirm(`Esta rodada já tem ${jaTem} resposta(s). Apagar essas respostas para todos poderem responder de novo?\n\nOK = apagar e reabrir · Cancelar = reabrir mantendo as respostas`)
     executar(r.id, () => supabase.rpc('colocar_no_ar', { p_rodada: r.id, p_limpar: limpar }))
+  }
+
+  const avisar = async (r) => {
+    if (!confirm(`Mandar agora a notificação da rodada "${r.titulo}" para todos os inscritos?`)) return
+    setOcupado(`aviso-${r.id}`)
+    setErro('')
+    const resultado = await avisarRodada(r)
+    setOcupado(null)
+    setErro(resultado.erro ? resultado.erro : '')
+    setAvisoMsg(resultado.erro ? '' : textoResultado(resultado))
   }
 
   const zerarTudo = () => {
@@ -252,6 +265,7 @@ function AoVivo() {
           </Card>
         )}
         {erro && <p className="text-sm font-semibold text-rose-600">{erro}</p>}
+        {avisoMsg && <p className="text-sm font-semibold text-emerald-700">Aviso: {avisoMsg}</p>}
         {respostas.erro && <p className="text-sm text-rose-600">{respostas.erro}</p>}
       </div>
 
@@ -272,6 +286,11 @@ function AoVivo() {
                     {r.status === 'no_ar' ? 'No ar' : r.status === 'encerrada' ? 'Encerrada' : 'Agendada'} • {agendaTexto(r)} • {n} resposta(s)
                   </p>
                 </div>
+                {r.status !== 'encerrada' && (
+                  <Botao variante="secundario" className="px-2.5 py-1.5 text-xs" title="Mandar agora a notificação desta rodada" disabled={ocupado !== null} onClick={() => avisar(r)}>
+                    {ocupado === `aviso-${r.id}` ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />} Avisar
+                  </Botao>
+                )}
                 {r.status !== 'no_ar' && (
                   <Botao variante="escuro" className="px-3 py-1.5 text-xs" disabled={ocupado !== null} onClick={() => colocarNoAr(r)}>
                     {ocupado === r.id ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />} No ar
@@ -984,6 +1003,351 @@ function HistoricoAdmin() {
           </div>
         </>
       )}
+    </Card>
+  )
+}
+
+/* ---------- aba Avisos (notificações no celular) ---------- */
+
+const MOTIVOS = { rodada: 'No ar', lembrete: 'Lembrete', manual: 'Manual', avulsa: 'Avulsa', agendada: 'Agendada' }
+const ERRO_FUNCAO = 'A função enviar-push não respondeu. Confira se ela foi publicada (LEIA-ME-SUPABASE.md → Notificações).'
+
+/** Disparo manual do aviso de uma rodada ("está no ar" se estiver no ar; senão, "daqui a X minutos"). */
+async function avisarRodada(r) {
+  const { data, error } = await supabase.functions.invoke('enviar-push', { body: { tipo: 'manual', rodada_id: r.id } })
+  if (error || data?.erro) return { erro: data?.erro ?? ERRO_FUNCAO }
+  return data
+}
+
+const textoResultado = (r) =>
+  r.erro
+    ? r.erro
+    : `Enviado para ${r.enviados} celular(es)${r.falhas ? ` · ${r.falhas} falha(s)` : ''}${r.removidas ? ` · ${r.removidas} desinstalado(s) removido(s)` : ''}`
+
+// Exemplo para a prévia dos textos
+const RODADA_EXEMPLO = { horario: '10:30', titulo: 'Clássicos da Música', pontos: 53.75 }
+const preencherModelo = (modelo, r, minutos) =>
+  (modelo ?? '')
+    .replaceAll('{horario}', r.horario)
+    .replaceAll('{titulo}', r.titulo)
+    .replaceAll('{pontos}', fmt(r.pontos))
+    .replaceAll('{minutos}', String(minutos))
+
+function PreviaNotificacao({ titulo, corpo }) {
+  return (
+    <div className="flex gap-3 rounded-xl bg-slate-100 p-3">
+      <img src="/icone-192.png" alt="" className="h-10 w-10 shrink-0 rounded-lg" />
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold">{titulo || 'Título'}</p>
+        <p className="text-sm text-slate-600">{corpo || 'Mensagem'}</p>
+      </div>
+    </div>
+  )
+}
+
+function AvisosAdmin() {
+  const { configuracoes, rodadas } = useDados()
+  const { perfil } = useAuth()
+  const [resumo, setResumo] = useState(null)
+  const [erroResumo, setErroResumo] = useState('')
+  const envios = useTabela(() => supabase.from('push_envios').select('*').order('criado_em', { ascending: false }).limit(50))
+  const agendados = useTabela(() => supabase.from('push_agendados').select('*').eq('status', 'pendente').order('enviar_em'))
+
+  const carregarResumo = useCallback(async () => {
+    const { data, error } = await supabase.rpc('push_resumo')
+    if (error) return setErroResumo(mensagemDeErro(error))
+    setResumo(data)
+  }, [])
+
+  useEffect(() => {
+    carregarResumo()
+  }, [carregarResumo])
+
+  const atualizarTudo = () => {
+    envios.recarregar()
+    agendados.recarregar()
+    carregarResumo()
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Celulares inscritos</p>
+            <p className="mt-1 font-display text-3xl tabular-nums">{resumo?.inscritos ?? '—'}</p>
+            <p className="text-xs text-slate-500">{resumo ? `${resumo.ouvintes} ouvinte(s)` : erroResumo || 'carregando…'}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Função de envio</p>
+            <p className={`mt-1 font-display text-xl ${resumo?.funcao_pronta ? 'text-emerald-700' : 'text-amber-700'}`}>{resumo?.funcao_pronta ? 'Pronta' : 'Ainda não usada'}</p>
+            <p className="text-xs text-slate-500">{resumo?.funcao_pronta ? 'Chaves geradas e guardadas' : 'Fica pronta no primeiro "Quero ser avisado"'}</p>
+          </Card>
+        </div>
+
+        {configuracoes && <AvisosAutomaticos configuracoes={configuracoes} />}
+        <MensagemAvulsa perfil={perfil} inscritos={resumo?.inscritos ?? 0} aoEnviar={atualizarTudo} />
+        <DisparoManual rodadas={rodadas} aoEnviar={atualizarTudo} />
+      </div>
+
+      <div className="space-y-4">
+        <Card className="flex flex-col">
+          <div className="border-b border-slate-100 p-3 text-sm font-semibold text-slate-600">Mensagens agendadas</div>
+          {agendados.itens?.length === 0 && <p className="p-4 text-center text-sm text-slate-500">Nenhuma mensagem agendada.</p>}
+          <div className="divide-y divide-slate-100">
+            {agendados.itens?.map((a) => (
+              <div key={a.id} className="flex items-start gap-2 px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{a.titulo}</p>
+                  <p className="truncate text-xs text-slate-500">{a.corpo}</p>
+                  <p className="text-[11px] text-slate-400">Sai em {fmtDataHora(a.enviar_em)}</p>
+                </div>
+                <button
+                  className="text-xs font-semibold text-rose-600 underline"
+                  onClick={async () => {
+                    if (!confirm('Cancelar esta mensagem agendada?')) return
+                    await supabase.from('push_agendados').update({ status: 'cancelado' }).eq('id', a.id).eq('status', 'pendente')
+                    agendados.recarregar()
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-100 p-3">
+            <span className="text-sm font-semibold text-slate-600">Últimos envios</span>
+            <button onClick={atualizarTudo} className="text-xs font-semibold text-slate-500 underline">
+              Atualizar
+            </button>
+          </div>
+          {!envios.itens && <Carregando />}
+          {envios.itens?.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhum aviso enviado ainda.</p>}
+          <div className="divide-y divide-slate-100">
+            {envios.itens?.map((e) => (
+              <div key={e.id} className="px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm font-semibold">{e.titulo}</p>
+                  <Selo cor={e.motivo === 'rodada' || e.motivo === 'lembrete' ? 'rose' : 'slate'} className="normal-case">
+                    {MOTIVOS[e.motivo] ?? e.motivo}
+                  </Selo>
+                </div>
+                <p className="truncate text-xs text-slate-500">{e.corpo}</p>
+                <p className="text-[11px] text-slate-400">
+                  {fmtDataHora(e.criado_em)} · {e.concluido_em ? `${e.enviados} enviados${e.falhas ? `, ${e.falhas} falhas` : ''}` : 'enviando…'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+const CAMPOS_AVISO = ['aviso_automatico', 'lembrete_ativo', 'lembrete_minutos', 'modelo_no_ar_titulo', 'modelo_no_ar_corpo', 'modelo_lembrete_titulo', 'modelo_lembrete_corpo']
+
+function AvisosAutomaticos({ configuracoes }) {
+  const [form, setForm] = useState(() => Object.fromEntries(CAMPOS_AVISO.map((k) => [k, configuracoes[k]])))
+  const [estado, setEstado] = useState('')
+  const [erro, setErro] = useState('')
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  const alterado = CAMPOS_AVISO.some((k) => form[k] !== configuracoes[k])
+
+  const salvar = async () => {
+    setEstado('salvando')
+    setErro('')
+    const { error } = await supabase.from('configuracoes').update(form).eq('id', 1)
+    setEstado(error ? '' : 'salvo')
+    if (error) setErro(mensagemDeErro(error))
+    else setTimeout(() => setEstado(''), 2000)
+  }
+
+  return (
+    <Card className="space-y-5 p-5">
+      <div>
+        <p className="font-semibold">Avisos automáticos</p>
+        <p className="text-xs text-slate-500">
+          Nos textos, use <b>{'{horario}'}</b>, <b>{'{titulo}'}</b>, <b>{'{pontos}'}</b> e, no lembrete, <b>{'{minutos}'}</b>: são trocados pelos dados da rodada.
+        </p>
+      </div>
+
+      <div className="space-y-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input type="checkbox" checked={form.aviso_automatico} onChange={(e) => set('aviso_automatico', e.target.checked)} className="mt-1 h-4 w-4 accent-rose-600" />
+          <span>
+            <span className="block text-sm font-semibold">Avisar quando a rodada entrar no ar</span>
+            <span className="block text-xs text-slate-500">Vale para o botão "No ar" e para o agendamento automático.</span>
+          </span>
+        </label>
+        <div className={`grid gap-3 ${form.aviso_automatico ? '' : 'opacity-50'}`}>
+          <Campo rotulo="Título">
+            <Texto valor={form.modelo_no_ar_titulo} onChange={(v) => set('modelo_no_ar_titulo', v.slice(0, 80))} />
+          </Campo>
+          <Campo rotulo="Mensagem">
+            <Texto valor={form.modelo_no_ar_corpo} onChange={(v) => set('modelo_no_ar_corpo', v.slice(0, 240))} />
+          </Campo>
+          <PreviaNotificacao titulo={preencherModelo(form.modelo_no_ar_titulo, RODADA_EXEMPLO)} corpo={preencherModelo(form.modelo_no_ar_corpo, RODADA_EXEMPLO)} />
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input type="checkbox" checked={form.lembrete_ativo} onChange={(e) => set('lembrete_ativo', e.target.checked)} className="mt-1 h-4 w-4 accent-rose-600" />
+          <span>
+            <span className="block text-sm font-semibold">Lembrete antes da pergunta</span>
+            <span className="block text-xs text-slate-500">Para rodadas com data e horário cadastrados (manuais ou automáticas).</span>
+          </span>
+        </label>
+        <div className={`grid gap-3 ${form.lembrete_ativo ? '' : 'opacity-50'}`}>
+          <Campo rotulo="Quantos minutos antes">
+            <Numero valor={form.lembrete_minutos} onChange={(v) => set('lembrete_minutos', Math.min(240, Math.max(1, v || 1)))} min="1" max="240" />
+          </Campo>
+          <Campo rotulo="Título">
+            <Texto valor={form.modelo_lembrete_titulo} onChange={(v) => set('modelo_lembrete_titulo', v.slice(0, 80))} />
+          </Campo>
+          <Campo rotulo="Mensagem">
+            <Texto valor={form.modelo_lembrete_corpo} onChange={(v) => set('modelo_lembrete_corpo', v.slice(0, 240))} />
+          </Campo>
+          <PreviaNotificacao
+            titulo={preencherModelo(form.modelo_lembrete_titulo, RODADA_EXEMPLO, form.lembrete_minutos)}
+            corpo={preencherModelo(form.modelo_lembrete_corpo, RODADA_EXEMPLO, form.lembrete_minutos)}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Botao onClick={salvar} disabled={!alterado || estado === 'salvando'}>
+          {estado === 'salvando' ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Salvar avisos automáticos
+        </Botao>
+        {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo!</span>}
+        {erro && <span className="text-sm font-semibold text-rose-600">{erro}</span>}
+      </div>
+    </Card>
+  )
+}
+
+function MensagemAvulsa({ perfil, inscritos, aoEnviar }) {
+  const [titulo, setTitulo] = useState('')
+  const [corpo, setCorpo] = useState('')
+  const [quando, setQuando] = useState('agora')
+  const [data, setData] = useState(hojeSP)
+  const [hora, setHora] = useState('')
+  const [estado, setEstado] = useState('')
+  const [retorno, setRetorno] = useState(null)
+  const instante = quando === 'agendar' && data && hora ? instanteRodada(data, hora) : null
+  const valido = titulo.trim() && corpo.trim() && (quando === 'agora' || (instante && instante > new Date()))
+
+  const enviar = async (e) => {
+    e.preventDefault()
+    setRetorno(null)
+    if (quando === 'agora') {
+      if (!confirm(`Enviar agora para ${inscritos} celular(es)?\n\n${titulo}\n${corpo}`)) return
+      setEstado('enviando')
+      const { data: r, error } = await supabase.functions.invoke('enviar-push', { body: { tipo: 'avulsa', titulo: titulo.trim(), corpo: corpo.trim() } })
+      setEstado('')
+      setRetorno(error || r?.erro ? { erro: r?.erro ?? ERRO_FUNCAO } : r)
+      if (!error && !r?.erro) {
+        setTitulo('')
+        setCorpo('')
+      }
+    } else {
+      setEstado('enviando')
+      const { error } = await supabase.from('push_agendados').insert({ titulo: titulo.trim(), corpo: corpo.trim(), enviar_em: instante.toISOString(), criado_por: perfil.id })
+      setEstado('')
+      if (error) setRetorno({ erro: mensagemDeErro(error) })
+      else {
+        setRetorno({ texto: `Agendada para ${diaMes(data)} às ${hora}.` })
+        setTitulo('')
+        setCorpo('')
+      }
+    }
+    aoEnviar()
+  }
+
+  return (
+    <Card className="p-5">
+      <p className="font-semibold">Mensagem avulsa</p>
+      <p className="text-xs text-slate-500">Texto livre, enviado na hora ou agendado. Ex.: "Saiu o ranking da semana!", "Hoje tem pergunta especial às 11h".</p>
+      <form onSubmit={enviar} className="mt-4 space-y-3">
+        <Campo rotulo={`Título (${titulo.length}/80)`}>
+          <Texto valor={titulo} onChange={(v) => setTitulo(v.slice(0, 80))} placeholder="Saiu o ranking da semana!" />
+        </Campo>
+        <Campo rotulo={`Mensagem (${corpo.length}/240)`}>
+          <Texto multilinha valor={corpo} onChange={(v) => setCorpo(v.slice(0, 240))} placeholder="Abra o quiz e veja quem está concorrendo à Smart TV." />
+        </Campo>
+        {(titulo || corpo) && <PreviaNotificacao titulo={titulo} corpo={corpo} />}
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input type="radio" name="quando" checked={quando === 'agora'} onChange={() => setQuando('agora')} className="h-4 w-4 accent-rose-600" /> Enviar agora
+          </label>
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input type="radio" name="quando" checked={quando === 'agendar'} onChange={() => setQuando('agendar')} className="h-4 w-4 accent-rose-600" /> Agendar
+          </label>
+          {quando === 'agendar' && (
+            <>
+              <Campo rotulo="Data">
+                <input type="date" value={data} onChange={(e) => setData(e.target.value)} className={inputCls} />
+              </Campo>
+              <Campo rotulo="Hora (Brasília)">
+                <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} className={inputCls} />
+              </Campo>
+            </>
+          )}
+        </div>
+        {quando === 'agendar' && instante && instante <= new Date() && <p className="text-xs font-semibold text-rose-600">Escolha um horário no futuro.</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          <Botao type="submit" disabled={!valido || estado === 'enviando'}>
+            {estado === 'enviando' ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} {quando === 'agora' ? 'Enviar para todos' : 'Agendar mensagem'}
+          </Botao>
+          {retorno && <span className={`text-sm font-semibold ${retorno.erro ? 'text-rose-600' : 'text-emerald-700'}`}>{retorno.texto ?? textoResultado(retorno)}</span>}
+        </div>
+      </form>
+    </Card>
+  )
+}
+
+function DisparoManual({ rodadas, aoEnviar }) {
+  const candidatas = rodadas.filter((r) => r.status !== 'encerrada')
+  const [rodadaId, setRodadaId] = useState('')
+  const [estado, setEstado] = useState('')
+  const [retorno, setRetorno] = useState(null)
+  const escolhida = candidatas.find((r) => r.id === rodadaId) ?? candidatas.find((r) => r.status === 'no_ar') ?? candidatas[0]
+
+  const disparar = async () => {
+    if (!escolhida || !confirm(`Avisar agora sobre "${escolhida.titulo}"?`)) return
+    setEstado('enviando')
+    setRetorno(await avisarRodada(escolhida))
+    setEstado('')
+    aoEnviar()
+  }
+
+  return (
+    <Card className="p-5">
+      <p className="font-semibold">Disparo manual de uma rodada</p>
+      <p className="text-xs text-slate-500">
+        Manda agora o aviso da rodada escolhida: o texto "no ar" se ela estiver no ar, ou o do lembrete se ainda vai começar. Também há o botão "Avisar" em cada
+        rodada da aba Ao vivo.
+      </p>
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <Campo rotulo="Rodada" className="min-w-64 flex-1">
+          <select value={escolhida?.id ?? ''} onChange={(e) => setRodadaId(e.target.value)} className={inputCls}>
+            {candidatas.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.data ? `${diaMes(r.data)} ` : ''}
+                {r.horario} · {r.titulo} {r.status === 'no_ar' ? '(no ar)' : ''}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Botao variante="escuro" onClick={disparar} disabled={!escolhida || estado === 'enviando'}>
+          {estado === 'enviando' ? <Loader2 size={15} className="animate-spin" /> : <Bell size={15} />} Avisar agora
+        </Botao>
+      </div>
+      {retorno && <p className={`mt-2 text-sm font-semibold ${retorno.erro ? 'text-rose-600' : 'text-emerald-700'}`}>{textoResultado(retorno)}</p>}
     </Card>
   )
 }

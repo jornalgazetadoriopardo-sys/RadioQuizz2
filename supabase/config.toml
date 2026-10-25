@@ -1,0 +1,7 @@
+# Configuração usada pela linha de comando do Supabase (opcional).
+# A função enviar-push é chamada pelo próprio banco, sem login: por isso verify_jwt = false.
+# Ela se protege sozinha (ver o comentário no início de functions/enviar-push/index.ts).
+project_id = "sxhwkkplxaotpxtgbzqe"
+
+[functions.enviar-push]
+verify_jwt = false

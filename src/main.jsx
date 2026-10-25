@@ -5,6 +5,9 @@ import { AuthProvider } from './auth.jsx'
 import { DataProvider } from './store.jsx'
 import App from './App.jsx'
 import ErroGeral from './ErroGeral.jsx'
+import { registrarServiceWorker } from './push.js'
+
+registrarServiceWorker()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

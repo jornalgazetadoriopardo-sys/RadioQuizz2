@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Play, Radio, Trophy, XCircle } from 'lucide-react'
+import { Bell, BellOff, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Play, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
 import { fmt, hojeSP, quandoTexto, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { Avatar } from '../ui.jsx'
 import { fmtHora, useRelogio } from '../relogio.js'
+import { usePush } from '../push.js'
 import Rodada from './Rodada.jsx'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora } from '../historico.jsx'
 
@@ -119,6 +120,8 @@ function Inicio({ irPara, eu }) {
         </div>
       )}
 
+      <AvisosCelular />
+
       {/* Menu com botões grandes */}
       <div className="grid grid-cols-2 gap-3">
         <BotaoMenu icone={Trophy} cor="text-amber-600 bg-amber-100" titulo="Ranking" detalhe={posicaoTexto(eu)} onClick={() => irPara('ranking')} />
@@ -135,6 +138,89 @@ function Inicio({ irPara, eu }) {
           <LogOut size={22} /> Sair
         </button>
       </div>
+    </div>
+  )
+}
+
+const CHAVE_AGORA_NAO = 'pergunta-da-hora:avisos-agora-nao'
+const lerAgoraNao = () => {
+  try {
+    return localStorage.getItem(CHAVE_AGORA_NAO) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Convite para ligar as notificações (aviso quando a pergunta entra no ar). */
+function AvisosCelular() {
+  const { estado, erro, ativar, desativar } = usePush()
+  const [agoraNao, setAgoraNao] = useState(lerAgoraNao)
+  const esconder = () => {
+    setAgoraNao(true)
+    try {
+      localStorage.setItem(CHAVE_AGORA_NAO, '1')
+    } catch {
+      // sem armazenamento, o cartão volta na próxima visita
+    }
+  }
+
+  if (estado === 'carregando') return null
+  if (estado === 'ativo')
+    return (
+      <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 ring-2 ring-emerald-200">
+        <span className="flex items-center gap-2 text-lg font-semibold text-emerald-800">
+          <Bell size={22} /> Avisos ligados neste celular
+        </span>
+        <button onClick={desativar} className="min-h-[44px] px-2 text-base font-semibold text-slate-600 underline">
+          Desligar
+        </button>
+      </div>
+    )
+  if (agoraNao) return null
+
+  return (
+    <div className="rounded-3xl bg-amber-50 p-5 ring-2 ring-amber-200">
+      <p className="flex items-center gap-2 text-xl font-extrabold text-slate-900">
+        <Bell size={26} className="text-amber-600" /> Quer ser avisado?
+      </p>
+      <p className="mt-2 text-lg leading-relaxed text-slate-800">O celular toca um aviso na hora em que a pergunta entrar no ar.</p>
+
+      {estado === 'inativo' && (
+        <>
+          <button onClick={ativar} className="mt-4 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 text-xl font-extrabold text-white active:scale-[.98]">
+            <Bell size={24} /> QUERO SER AVISADO
+          </button>
+          <p className="mt-2 text-base text-slate-700">
+            Depois, toque em <b>Permitir</b> na mensagem que vai aparecer.
+          </p>
+        </>
+      )}
+      {estado === 'ios-instalar' && (
+        <ol className="mt-3 list-decimal space-y-1 pl-6 text-lg leading-relaxed text-slate-800">
+          <li>
+            Toque no botão <b>Compartilhar</b> do Safari (o quadrado com a seta para cima).
+          </li>
+          <li>
+            Escolha <b>Adicionar à Tela de Início</b>.
+          </li>
+          <li>Abra o quiz pelo ícone novo e toque em "Quero ser avisado".</li>
+          <li className="list-none text-base text-slate-600">Funciona no iPhone com iOS 16.4 ou mais novo.</li>
+        </ol>
+      )}
+      {estado === 'bloqueado' && (
+        <p className="mt-3 flex gap-2 text-lg leading-relaxed text-slate-800">
+          <BellOff size={22} className="mt-1 shrink-0 text-rose-600" />
+          Os avisos estão bloqueados neste celular. Para liberar, toque no cadeado ao lado do endereço do site, depois em
+          Notificações e escolha Permitir.
+        </p>
+      )}
+      {estado === 'nao-suportado' && (
+        <p className="mt-3 text-lg leading-relaxed text-slate-800">Este navegador não recebe avisos. Abra o link no Chrome (Android) ou no Safari (iPhone).</p>
+      )}
+      {erro && <p className="mt-2 text-base font-semibold text-rose-700">{erro}</p>}
+      <button onClick={esconder} className="mt-3 min-h-[44px] w-full text-center text-base font-semibold text-slate-600 underline">
+        Agora não
+      </button>
     </div>
   )
 }
