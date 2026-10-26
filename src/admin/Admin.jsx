@@ -14,14 +14,14 @@ import { Botao, Campo, Numero, Texto, inputCls, useTabela } from './comum.jsx'
 import Patrocinadores from './Patrocinadores.jsx'
 
 const ABAS = [
-  { id: 'aovivo', grupo: 'Programa', nome: 'Ao vivo', icone: RadioTower, descricao: 'Solte as perguntas no ar e acompanhe as respostas em tempo real.', cor: 'bg-rose-100 text-rose-600' },
+  { id: 'aovivo', grupo: 'Programa', nome: 'Ao vivo', icone: RadioTower, descricao: 'Solte as perguntas no ar e acompanhe as respostas em tempo real.', cor: 'bg-marca-100 text-marca-600' },
   { id: 'rodadas', grupo: 'Conteúdo', nome: 'Rodadas', icone: ListChecks, descricao: 'Perguntas, horários, pontos e agendamento de cada rodada.', cor: 'bg-violet-100 text-violet-600' },
-  { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Anúncios simples, vídeos do YouTube ou montados automaticamente.', cor: 'bg-amber-100 text-amber-600' },
+  { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Anúncios simples, vídeos do YouTube ou montados automaticamente.', cor: 'bg-ouro-100 text-ouro-600' },
   { id: 'premios', grupo: 'Conteúdo', nome: 'Prêmios', icone: Gift, descricao: 'O que os primeiros colocados da semana ganham.', cor: 'bg-emerald-100 text-emerald-600' },
-  { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação da semana. Recomeça toda segunda-feira.', cor: 'bg-amber-100 text-amber-600' },
+  { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação da semana. Recomeça toda segunda-feira.', cor: 'bg-ouro-100 text-ouro-600' },
   { id: 'historico', grupo: 'Ouvintes', nome: 'Histórico', icone: History, descricao: 'Todas as participações, para conferir reclamações.', cor: 'bg-sky-100 text-sky-600' },
   { id: 'feedback', grupo: 'Ouvintes', nome: 'Feedback', icone: MessageSquare, descricao: 'Problemas e sugestões enviados pelo app.', cor: 'bg-slate-100 text-slate-600' },
-  { id: 'avisos', grupo: 'Comunicação', nome: 'Avisos', icone: Bell, descricao: 'Notificações no celular: automáticas, agendadas e avulsas.', cor: 'bg-rose-100 text-rose-600' },
+  { id: 'avisos', grupo: 'Comunicação', nome: 'Avisos', icone: Bell, descricao: 'Notificações no celular: automáticas, agendadas e avulsas.', cor: 'bg-marca-100 text-marca-600' },
 ]
 const GRUPOS = ['Programa', 'Conteúdo', 'Ouvintes', 'Comunicação']
 
@@ -43,7 +43,7 @@ function AcessoRestrito({ email, sair }) {
   return (
     <div className="mx-auto mt-12 max-w-md px-4">
       <Card className="p-6 text-center">
-        <ShieldAlert className="mx-auto text-rose-600" size={36} />
+        <ShieldAlert className="mx-auto text-red-600" size={36} />
         <h1 className="mt-3 font-display text-xl">Acesso restrito</h1>
         <p className="mt-2 text-sm text-slate-500">
           {email ? (
@@ -77,12 +77,12 @@ function Painel() {
 
   const ModoApresentacao = ({ className = '' }) => (
     <label className={`flex cursor-pointer items-center gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-200 ${className}`}>
-      <Zap size={18} className="shrink-0 text-amber-500" />
+      <Zap size={18} className="shrink-0 text-ouro-500" />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">Modo apresentação</span>
         <span className="block text-[11px] text-slate-500">Anúncios de 5 s para todos</span>
       </span>
-      <input type="checkbox" checked={modoApresentacao} onChange={alternarApresentacao} className="h-5 w-5 accent-rose-600" />
+      <input type="checkbox" checked={modoApresentacao} onChange={alternarApresentacao} className="h-5 w-5 accent-marca-600" />
     </label>
   )
 
@@ -91,11 +91,11 @@ function Painel() {
       {/* Menu lateral (computador) */}
       <aside className="sticky top-[70px] hidden h-[calc(100vh-70px)] w-72 shrink-0 flex-col border-r border-slate-200 bg-white px-5 py-6 lg:flex">
         <div className="flex items-center gap-3 px-2">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-md shadow-rose-600/30">
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-ouro-300 to-ouro-500 text-marca-800 shadow-md shadow-ouro-500/30">
             <BarChart3 size={22} />
           </div>
           <div className="min-w-0">
-            <p className="font-display text-lg leading-tight">Painel do Quiz</p>
+            <p className="font-display text-lg leading-tight text-marca-800">Painel do Quiz</p>
             <p className="truncate text-xs text-slate-500">Olá, {perfil.nome || 'admin'}</p>
           </div>
         </div>
@@ -109,7 +109,7 @@ function Painel() {
                     key={id}
                     onClick={() => setAba(id)}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                      aba === id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+                      aba === id ? 'bg-marca-700 text-white shadow-md shadow-marca-700/25' : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     <span className={`grid h-8 w-8 place-items-center rounded-lg ${aba === id ? 'bg-white/15 text-white' : cor}`}>
@@ -138,7 +138,7 @@ function Painel() {
               key={id}
               onClick={() => setAba(id)}
               className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ring-1 transition ${
-                aba === id ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-600 ring-slate-200'
+                aba === id ? 'bg-marca-700 text-white ring-marca-700' : 'bg-white text-slate-600 ring-slate-200'
               }`}
             >
               <I size={15} /> {nome}
@@ -165,7 +165,7 @@ function Painel() {
             </Botao>
           </div>
         </div>
-        {erroConfig && <p className="-mt-4 mb-4 text-sm text-rose-600">{erroConfig}</p>}
+        {erroConfig && <p className="-mt-4 mb-4 text-sm text-red-600">{erroConfig}</p>}
 
         <div className="animate-fade-up" key={aba}>
           {aba === 'aovivo' && <AoVivo />}
@@ -189,14 +189,14 @@ function RelogioOficial() {
   const dif = diferencaDoAparelhoMs()
   const errado = relogioSincronizado() && Math.abs(dif) >= 5000
   return (
-    <div className={`rounded-xl bg-white px-4 py-1.5 shadow-sm ring-1 ${errado ? 'ring-amber-400' : 'ring-slate-200'}`} title="Hora do servidor, a mesma usada pelo agendamento das rodadas">
+    <div className={`rounded-xl bg-white px-4 py-1.5 shadow-sm ring-1 ${errado ? 'ring-ouro-400' : 'ring-slate-200'}`} title="Hora do servidor, a mesma usada pelo agendamento das rodadas">
       <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         <Clock size={12} /> Horário oficial (Brasília)
       </p>
       <p className="font-display text-2xl leading-tight tabular-nums">{fmtHora(agora)}</p>
       {!relogioSincronizado() && <p className="text-[11px] text-slate-500">Usando o relógio deste computador</p>}
       {errado && (
-        <p className="text-[11px] font-semibold text-amber-700">
+        <p className="text-[11px] font-semibold text-ouro-700">
           Este computador está {fmtFalta(Math.abs(dif))} {dif < 0 ? 'adiantado' : 'atrasado'}
         </p>
       )}
@@ -219,7 +219,7 @@ function ProximoAgendamento({ rodadas, rodadaNoAr }) {
       {fimNoAr && fimNoAr > agora && (
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">A rodada no ar fecha sozinha em</p>
-          <p className="font-display text-2xl tabular-nums text-rose-700">{fmtFalta(fimNoAr - agora)}</p>
+          <p className="font-display text-2xl tabular-nums text-marca-700">{fmtFalta(fimNoAr - agora)}</p>
           <p className="text-xs text-slate-500">às {fmtHorario(rodadaNoAr.horario_fim)}</p>
         </div>
       )}
@@ -295,9 +295,9 @@ function AoVivo() {
         ) : (
           <Vazio icone={RadioTower} titulo="Nenhuma rodada no ar" texto='Escolha uma rodada ao lado e clique em "No ar" quando o locutor anunciar, ou deixe o agendamento abrir sozinho.' />
         )}
-        {erro && <p className="text-sm font-semibold text-rose-600">{erro}</p>}
+        {erro && <p className="text-sm font-semibold text-red-600">{erro}</p>}
         {avisoMsg && <p className="text-sm font-semibold text-emerald-700">Aviso: {avisoMsg}</p>}
-        {respostas.erro && <p className="text-sm text-rose-600">{respostas.erro}</p>}
+        {respostas.erro && <p className="text-sm text-red-600">{respostas.erro}</p>}
         <DiagnosticoAgendamento />
       </div>
 
@@ -307,7 +307,7 @@ function AoVivo() {
           {rodadas.map((r) => {
             const n = daRodada(r.id).filter((x) => x.respondida_em).length
             return (
-              <div key={r.id} className={`flex items-center gap-3 px-3 py-2.5 ${r.status === 'no_ar' ? 'bg-rose-50/70' : ''}`}>
+              <div key={r.id} className={`flex items-center gap-3 px-3 py-2.5 ${r.status === 'no_ar' ? 'bg-marca-50/70' : ''}`}>
                 <span className="w-11 shrink-0 text-center">
                   <span className="block font-display text-sm">{fmtHorario(r.horario)}</span>
                   {r.data && <span className="block text-[10px] text-slate-500">{diaMes(r.data)}</span>}
@@ -379,7 +379,7 @@ function DiagnosticoAgendamento() {
   else if (!d.job.ativo) estado = { cor: 'rose', texto: 'Agendador desligado no banco' }
   else if (!ultima || ultimaHa > 3 * 60_000) estado = { cor: 'amber', texto: 'O agendador não está rodando (sem conferências recentes)' }
   else if (ultima.status === 'failed') estado = { cor: 'rose', texto: 'O agendador está dando erro' }
-  const corCls = { emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-200', amber: 'bg-amber-50 text-amber-800 ring-amber-200', rose: 'bg-rose-50 text-rose-800 ring-rose-200' }
+  const corCls = { emerald: 'bg-emerald-50 text-emerald-800 ring-emerald-200', amber: 'bg-ouro-50 text-ouro-800 ring-ouro-200', rose: 'bg-marca-50 text-marca-800 ring-marca-200' }
   const status = { no_ar: 'No ar', encerrada: 'Encerrada', agendada: 'Agendada' }
 
   return (
@@ -396,7 +396,7 @@ function DiagnosticoAgendamento() {
         </div>
       </div>
       {erro && (
-        <p className="mt-2 text-sm text-rose-600">
+        <p className="mt-2 text-sm text-marca-600">
           {erro} {/schema cache|diagnostico/i.test(erro) && '— rode o arquivo 010_corrige_agendamento.sql no SQL Editor.'}
         </p>
       )}
@@ -425,8 +425,8 @@ function DiagnosticoAgendamento() {
                 <span className="tabular-nums text-slate-500">
                   {diaMes(r.data)} {fmtHorario(r.horario)} → {fmtHorario(r.horario_fim)}
                 </span>
-                <span className={`font-semibold ${r.status === 'no_ar' ? 'text-rose-600' : 'text-slate-600'}`}>{status[r.status] ?? r.status}</span>
-                {presa && <span className="font-semibold text-amber-700">⚠ deveria estar {r.status === 'agendada' ? 'no ar' : 'agendada'}</span>}
+                <span className={`font-semibold ${r.status === 'no_ar' ? 'text-marca-600' : 'text-slate-600'}`}>{status[r.status] ?? r.status}</span>
+                {presa && <span className="font-semibold text-ouro-700">⚠ deveria estar {r.status === 'agendada' ? 'no ar' : 'agendada'}</span>}
               </div>
             )
           })}
@@ -449,7 +449,7 @@ function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Selo>
-            <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" /> No ar desde{' '}
+            <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" /> No ar desde{' '}
             {new Date(rodada.no_ar_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </Selo>
           <h2 className="mt-2 font-display text-xl">
@@ -556,7 +556,7 @@ function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => t
             <button
               key={item.id}
               onClick={() => setRascunho(item)}
-              className={`block w-full px-3 py-2.5 text-left transition hover:bg-slate-50 ${rascunho?.id === item.id ? 'bg-rose-50/70' : ''}`}
+              className={`block w-full px-3 py-2.5 text-left transition hover:bg-slate-50 ${rascunho?.id === item.id ? 'bg-marca-50/70' : ''}`}
             >
               {renderItem(item)}
             </button>
@@ -578,7 +578,7 @@ function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => t
                 </Botao>
               )}
               {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo! Os celulares já foram atualizados.</span>}
-              {erro && <span className="text-sm font-semibold text-rose-600">{erro}</span>}
+              {erro && <span className="text-sm font-semibold text-red-600">{erro}</span>}
             </div>
           </form>
         ) : (
@@ -700,8 +700,8 @@ function Rodadas() {
                 { id: 'manual', titulo: 'Manual', texto: 'A produção clica em "No ar" e em "Encerrar" no Ao vivo.' },
                 { id: 'automatico', titulo: 'Automático (agendado)', texto: 'Abre e fecha sozinha na data e nos horários abaixo.' },
               ].map((m) => (
-                <label key={m.id} className={`flex cursor-pointer gap-3 rounded-lg bg-white p-3 ring-2 ${r.modo === m.id ? 'ring-rose-500' : 'ring-slate-200'}`}>
-                  <input type="radio" name="modo" checked={r.modo === m.id} onChange={() => set('modo', m.id)} className="mt-1 h-4 w-4 accent-rose-600" />
+                <label key={m.id} className={`flex cursor-pointer gap-3 rounded-lg bg-white p-3 ring-2 ${r.modo === m.id ? 'ring-marca-500' : 'ring-slate-200'}`}>
+                  <input type="radio" name="modo" checked={r.modo === m.id} onChange={() => set('modo', m.id)} className="mt-1 h-4 w-4 accent-marca-600" />
                   <span>
                     <span className="block text-sm font-semibold">{m.titulo}</span>
                     <span className="block text-xs text-slate-500">{m.texto}</span>
@@ -758,7 +758,7 @@ function Rodadas() {
                 ? 'Horário de Brasília, pelo relógio do servidor. O agendador confere a cada segundo. O botão "No ar" continua valendo para adiantar ou reabrir, e "Encerrar" para fechar antes.'
                 : 'Nas rodadas manuais, a data e os horários só aparecem para o ouvinte como informação.'}
             </p>
-            {validarAgenda(r) && <p className="text-xs font-semibold text-rose-600">{validarAgenda(r)}</p>}
+            {validarAgenda(r) && <p className="text-xs font-semibold text-marca-600">{validarAgenda(r)}</p>}
           </div>
           <Campo rotulo="Nível" className="sm:col-span-2">
             <select value={r.nivel} onChange={(e) => set('nivel', e.target.value)} className={inputCls}>
@@ -823,7 +823,7 @@ function Premios() {
       validar={(p) => p.titulo.trim() && p.colocacao > 0}
       renderItem={(p) => (
         <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-amber-50 font-display text-sm text-amber-600">{p.colocacao}º</span>
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-ouro-50 font-display text-sm text-ouro-600">{p.colocacao}º</span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{p.titulo || 'Sem título'}</p>
             <p className="truncate text-xs text-slate-500">{p.oferecido_por}</p>
@@ -878,7 +878,7 @@ function RankingAdmin() {
 
 function FeedbackAdmin() {
   const { itens, erro } = useTabela(() => supabase.from('feedback').select('*, perfis(nome)').order('criado_em', { ascending: false }).limit(200))
-  if (erro) return <p className="text-sm text-rose-600">{erro}</p>
+  if (erro) return <p className="text-sm text-red-600">{erro}</p>
   if (!itens) return <Carregando />
   return (
     <Card className="divide-y divide-slate-100">
@@ -975,7 +975,7 @@ function HistoricoAdmin() {
         </Botao>
       </form>
 
-      {erro && <p className="p-4 text-sm text-rose-600">{erro}</p>}
+      {erro && <p className="p-4 text-sm text-red-600">{erro}</p>}
       {!itens && !erro && <Carregando />}
       {itens && (
         <>
@@ -1095,7 +1095,7 @@ function AvisosAdmin() {
           </Card>
           <Card className="p-4">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Função de envio</p>
-            <p className={`mt-1 font-display text-xl ${resumo?.funcao_pronta ? 'text-emerald-700' : 'text-amber-700'}`}>{resumo?.funcao_pronta ? 'Pronta' : 'Ainda não usada'}</p>
+            <p className={`mt-1 font-display text-xl ${resumo?.funcao_pronta ? 'text-emerald-700' : 'text-ouro-700'}`}>{resumo?.funcao_pronta ? 'Pronta' : 'Ainda não usada'}</p>
             <p className="text-xs text-slate-500">{resumo?.funcao_pronta ? 'Chaves geradas e guardadas' : 'Fica pronta no primeiro "Quero ser avisado"'}</p>
           </Card>
         </div>
@@ -1118,7 +1118,7 @@ function AvisosAdmin() {
                   <p className="text-[11px] text-slate-400">Sai em {fmtDataHora(a.enviar_em)}</p>
                 </div>
                 <button
-                  className="text-xs font-semibold text-rose-600 underline"
+                  className="text-xs font-semibold text-marca-600 underline"
                   onClick={async () => {
                     if (!confirm('Cancelar esta mensagem agendada?')) return
                     await supabase.from('push_agendados').update({ status: 'cancelado' }).eq('id', a.id).eq('status', 'pendente')
@@ -1192,7 +1192,7 @@ function AvisosAutomaticos({ configuracoes }) {
 
       <div className="space-y-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
         <label className="flex cursor-pointer items-start gap-3">
-          <input type="checkbox" checked={form.aviso_automatico} onChange={(e) => set('aviso_automatico', e.target.checked)} className="mt-1 h-4 w-4 accent-rose-600" />
+          <input type="checkbox" checked={form.aviso_automatico} onChange={(e) => set('aviso_automatico', e.target.checked)} className="mt-1 h-4 w-4 accent-marca-600" />
           <span>
             <span className="block text-sm font-semibold">Avisar quando a rodada entrar no ar</span>
             <span className="block text-xs text-slate-500">Vale para o botão "No ar" e para o agendamento automático.</span>
@@ -1211,7 +1211,7 @@ function AvisosAutomaticos({ configuracoes }) {
 
       <div className="space-y-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
         <label className="flex cursor-pointer items-start gap-3">
-          <input type="checkbox" checked={form.lembrete_ativo} onChange={(e) => set('lembrete_ativo', e.target.checked)} className="mt-1 h-4 w-4 accent-rose-600" />
+          <input type="checkbox" checked={form.lembrete_ativo} onChange={(e) => set('lembrete_ativo', e.target.checked)} className="mt-1 h-4 w-4 accent-marca-600" />
           <span>
             <span className="block text-sm font-semibold">Lembrete antes da pergunta</span>
             <span className="block text-xs text-slate-500">Para rodadas com data e horário cadastrados (manuais ou automáticas).</span>
@@ -1239,7 +1239,7 @@ function AvisosAutomaticos({ configuracoes }) {
           {estado === 'salvando' ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Salvar avisos automáticos
         </Botao>
         {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo!</span>}
-        {erro && <span className="text-sm font-semibold text-rose-600">{erro}</span>}
+        {erro && <span className="text-sm font-semibold text-red-600">{erro}</span>}
       </div>
     </Card>
   )
@@ -1297,10 +1297,10 @@ function MensagemAvulsa({ perfil, inscritos, aoEnviar }) {
         {(titulo || corpo) && <PreviaNotificacao titulo={titulo} corpo={corpo} />}
         <div className="flex flex-wrap items-end gap-4">
           <label className="flex items-center gap-2 text-sm font-semibold">
-            <input type="radio" name="quando" checked={quando === 'agora'} onChange={() => setQuando('agora')} className="h-4 w-4 accent-rose-600" /> Enviar agora
+            <input type="radio" name="quando" checked={quando === 'agora'} onChange={() => setQuando('agora')} className="h-4 w-4 accent-marca-600" /> Enviar agora
           </label>
           <label className="flex items-center gap-2 text-sm font-semibold">
-            <input type="radio" name="quando" checked={quando === 'agendar'} onChange={() => setQuando('agendar')} className="h-4 w-4 accent-rose-600" /> Agendar
+            <input type="radio" name="quando" checked={quando === 'agendar'} onChange={() => setQuando('agendar')} className="h-4 w-4 accent-marca-600" /> Agendar
           </label>
           {quando === 'agendar' && (
             <>
@@ -1313,12 +1313,12 @@ function MensagemAvulsa({ perfil, inscritos, aoEnviar }) {
             </>
           )}
         </div>
-        {quando === 'agendar' && instante && instante <= new Date() && <p className="text-xs font-semibold text-rose-600">Escolha um horário no futuro.</p>}
+        {quando === 'agendar' && instante && instante <= new Date() && <p className="text-xs font-semibold text-marca-600">Escolha um horário no futuro.</p>}
         <div className="flex flex-wrap items-center gap-3">
           <Botao type="submit" disabled={!valido || estado === 'enviando'}>
             {estado === 'enviando' ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} {quando === 'agora' ? 'Enviar para todos' : 'Agendar mensagem'}
           </Botao>
-          {retorno && <span className={`text-sm font-semibold ${retorno.erro ? 'text-rose-600' : 'text-emerald-700'}`}>{retorno.texto ?? textoResultado(retorno)}</span>}
+          {retorno && <span className={`text-sm font-semibold ${retorno.erro ? 'text-red-600' : 'text-emerald-700'}`}>{retorno.texto ?? textoResultado(retorno)}</span>}
         </div>
       </form>
     </Card>
@@ -1362,7 +1362,7 @@ function DisparoManual({ rodadas, aoEnviar }) {
           {estado === 'enviando' ? <Loader2 size={15} className="animate-spin" /> : <Bell size={15} />} Avisar agora
         </Botao>
       </div>
-      {retorno && <p className={`mt-2 text-sm font-semibold ${retorno.erro ? 'text-rose-600' : 'text-emerald-700'}`}>{textoResultado(retorno)}</p>}
+      {retorno && <p className={`mt-2 text-sm font-semibold ${retorno.erro ? 'text-red-600' : 'text-emerald-700'}`}>{textoResultado(retorno)}</p>}
     </Card>
   )
 }

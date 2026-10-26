@@ -17,3 +17,13 @@ body { background: #eef2f7; color: #0f172a; -webkit-tap-highlight-color: transpa
 /* Altura da tela no celular: 100vh para iPhones antigos, 100dvh (desconta a barra do navegador) nos novos. */
 .altura-tela { height: 100vh; height: 100dvh; }
 @media (min-width: 640px) { .altura-tela { height: auto; } }
+
+/* Fundo azul da Difusora com o brilho dourado da nota e ondas de rádio */
+.fundo-marca {
+  background-color: #363c80;
+  background-image:
+    radial-gradient(circle at 110% -10%, rgba(244, 207, 42, .35) 0, rgba(244, 207, 42, 0) 45%),
+    repeating-radial-gradient(circle at 115% -15%, rgba(255, 255, 255, 0) 0 38px, rgba(255, 255, 255, .06) 39px 41px),
+    linear-gradient(180deg, #40478f 0%, #2b306a 100%);
+}
+.font-display { font-weight: 900; letter-spacing: -0.01em; }

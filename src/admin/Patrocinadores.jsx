@@ -8,8 +8,8 @@ import { LAYOUTS, PecaAnuncio, ehShorts, youtubeId } from '../anuncios.jsx'
 import { Botao, Campo, Texto, enviarImagem, inputCls, useTabela } from './comum.jsx'
 
 const TIPOS = [
-  { id: 'simples', nome: 'Simples', descricao: 'Logo ou ícone com uma frase. Rápido de cadastrar.', icone: Megaphone, cor: 'bg-amber-100 text-amber-700' },
-  { id: 'video', nome: 'Vídeo do YouTube', descricao: 'Cole o link de um vídeo (pode ser "Não listado").', icone: Clapperboard, cor: 'bg-rose-100 text-rose-700' },
+  { id: 'simples', nome: 'Simples', descricao: 'Logo ou ícone com uma frase. Rápido de cadastrar.', icone: Megaphone, cor: 'bg-ouro-100 text-ouro-700' },
+  { id: 'video', nome: 'Vídeo do YouTube', descricao: 'Cole o link de um vídeo (pode ser "Não listado").', icone: Clapperboard, cor: 'bg-marca-100 text-marca-700' },
   { id: 'automatico', nome: 'Montado pelo app', descricao: 'Logo, contatos, cores e promoção num layout pronto.', icone: Sparkles, cor: 'bg-violet-100 text-violet-700' },
 ]
 
@@ -103,9 +103,9 @@ export default function Patrocinadores() {
       <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
         <button
           onClick={() => setRascunho(novoPatrocinador())}
-          className="flex w-40 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-rose-300 bg-rose-50/60 p-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+          className="flex w-40 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-marca-300 bg-marca-50/60 p-4 text-sm font-semibold text-marca-700 transition hover:bg-marca-50"
         >
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-rose-600 text-white">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-marca-600 text-white">
             <Plus size={20} />
           </span>
           Novo patrocinador
@@ -118,7 +118,7 @@ export default function Patrocinadores() {
               key={p.id}
               onClick={() => setRascunho({ ...novoPatrocinador(), ...p })}
               className={`flex w-56 shrink-0 items-center gap-3 rounded-2xl bg-white p-3 text-left shadow-sm ring-1 transition hover:shadow-md ${
-                ativo ? 'ring-2 ring-rose-500' : 'ring-slate-200'
+                ativo ? 'ring-2 ring-marca-500' : 'ring-slate-200'
               } ${p.ativo ? '' : 'opacity-60'}`}
             >
               <span className={`grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl ${tipo.cor}`}>
@@ -145,10 +145,10 @@ export default function Patrocinadores() {
                   key={t.id}
                   type="button"
                   onClick={() => set('tipo', t.id)}
-                  className={`relative rounded-2xl bg-white p-4 text-left ring-2 transition hover:shadow-md ${rascunho.tipo === t.id ? 'ring-rose-500' : 'ring-slate-200'}`}
+                  className={`relative rounded-2xl bg-white p-4 text-left ring-2 transition hover:shadow-md ${rascunho.tipo === t.id ? 'ring-marca-500' : 'ring-slate-200'}`}
                 >
                   {rascunho.tipo === t.id && (
-                    <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-rose-600 text-white">
+                    <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-marca-600 text-white">
                       <Check size={14} />
                     </span>
                   )}
@@ -198,7 +198,7 @@ export default function Patrocinadores() {
                 </span>
               </Campo>
               <label className="flex cursor-pointer items-center gap-3 self-start rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
-                <input type="checkbox" checked={rascunho.ativo} onChange={(e) => set('ativo', e.target.checked)} className="h-5 w-5 accent-rose-600" />
+                <input type="checkbox" checked={rascunho.ativo} onChange={(e) => set('ativo', e.target.checked)} className="h-5 w-5 accent-marca-600" />
                 <span>
                   <span className="block text-sm font-semibold">Anúncio ativo</span>
                   <span className="block text-xs text-slate-500">Aparece para os ouvintes antes das perguntas.</span>
@@ -211,9 +211,9 @@ export default function Patrocinadores() {
             <Botao onClick={salvar} disabled={!!problema || estado === 'salvando'}>
               {estado === 'salvando' ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Salvar patrocinador
             </Botao>
-            {problema && <span className="text-sm font-semibold text-amber-700">{problema}</span>}
+            {problema && <span className="text-sm font-semibold text-ouro-700">{problema}</span>}
             {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo! Os celulares já foram atualizados.</span>}
-            {erro && <span className="text-sm font-semibold text-rose-600">{erro}</span>}
+            {erro && <span className="text-sm font-semibold text-red-600">{erro}</span>}
             {existe && (
               <Botao variante="perigo" className="ml-auto" onClick={excluir}>
                 <Trash2 size={15} /> Excluir
@@ -271,18 +271,18 @@ function EnvioImagem({ rotulo, url, pasta, aoEnviar, aoRemover }) {
     <div>
       <span className="mb-1 block text-xs font-semibold text-slate-600">{rotulo}</span>
       <div className="flex items-center gap-3">
-        <label className="group relative grid h-20 w-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-rose-400">
-          {url ? <img src={url} alt="" className="h-full w-full object-contain p-1" /> : enviando ? <Loader2 className="animate-spin text-rose-600" /> : <ImagePlus className="text-slate-400 group-hover:text-rose-500" />}
+        <label className="group relative grid h-20 w-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-marca-400">
+          {url ? <img src={url} alt="" className="h-full w-full object-contain p-1" /> : enviando ? <Loader2 className="animate-spin text-marca-600" /> : <ImagePlus className="text-slate-400 group-hover:text-marca-500" />}
           <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolher(e.target.files[0])} />
         </label>
         <div className="text-xs text-slate-500">
           <p>{url ? 'Clique na imagem para trocar.' : 'Clique para enviar (até 3 MB).'}</p>
           {url && (
-            <button type="button" onClick={aoRemover} className="mt-1 font-semibold text-rose-600 underline">
+            <button type="button" onClick={aoRemover} className="mt-1 font-semibold text-marca-600 underline">
               Remover
             </button>
           )}
-          {erro && <p className="mt-1 font-semibold text-rose-600">{erro}</p>}
+          {erro && <p className="mt-1 font-semibold text-red-600">{erro}</p>}
         </div>
       </div>
     </div>
@@ -351,7 +351,7 @@ function ConteudoVideo({ p, set }) {
             placeholder="https://youtu.be/... ou https://www.youtube.com/watch?v=..."
           />
         </Campo>
-        {p.video_url && !id && <p className="text-sm font-semibold text-rose-600">Não reconheci esse link. Copie o endereço pelo botão "Compartilhar" do YouTube.</p>}
+        {p.video_url && !id && <p className="text-sm font-semibold text-marca-600">Não reconheci esse link. Copie o endereço pelo botão "Compartilhar" do YouTube.</p>}
         {id && (
           <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
             <img src={`https://i.ytimg.com/vi/${id}/mqdefault.jpg`} alt="" className="h-14 w-24 rounded-lg object-cover" />
@@ -363,8 +363,8 @@ function ConteudoVideo({ p, set }) {
             { v: false, nome: 'Horizontal (16:9)' },
             { v: true, nome: 'Vertical (Shorts / 9:16)' },
           ].map((o) => (
-            <label key={o.nome} className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ring-2 ${p.video_vertical === o.v ? 'ring-rose-500' : 'ring-slate-200'}`}>
-              <input type="radio" name="formato" checked={p.video_vertical === o.v} onChange={() => set('video_vertical', o.v)} className="accent-rose-600" />
+            <label key={o.nome} className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ring-2 ${p.video_vertical === o.v ? 'ring-marca-500' : 'ring-slate-200'}`}>
+              <input type="radio" name="formato" checked={p.video_vertical === o.v} onChange={() => set('video_vertical', o.v)} className="accent-marca-600" />
               {o.nome}
             </label>
           ))}
@@ -407,7 +407,7 @@ function ConteudoAutomatico({ p, set }) {
                   key={l.id}
                   type="button"
                   onClick={() => set('layout', l.id)}
-                  className={`overflow-hidden rounded-2xl bg-white text-left ring-2 transition hover:shadow-md ${p.layout === l.id ? 'ring-rose-500' : 'ring-slate-200'}`}
+                  className={`overflow-hidden rounded-2xl bg-white text-left ring-2 transition hover:shadow-md ${p.layout === l.id ? 'ring-marca-500' : 'ring-slate-200'}`}
                 >
                   <div className="pointer-events-none relative h-60 overflow-hidden bg-gradient-to-b from-slate-100 to-slate-50">
                     <div className="absolute left-1/2 top-4 w-[340px] origin-top -translate-x-1/2 scale-[0.62]">
@@ -416,7 +416,7 @@ function ConteudoAutomatico({ p, set }) {
                   </div>
                   <div className="p-3">
                     <p className="flex items-center gap-1.5 text-sm font-semibold">
-                      {p.layout === l.id && <Check size={14} className="text-rose-600" />} {l.nome}
+                      {p.layout === l.id && <Check size={14} className="text-marca-600" />} {l.nome}
                     </p>
                     <p className="text-[11px] leading-snug text-slate-500">{l.descricao}</p>
                   </div>

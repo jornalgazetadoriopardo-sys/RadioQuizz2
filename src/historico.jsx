@@ -24,8 +24,8 @@ export function situacao(h) {
 
 const CORES_SELO = {
   emerald: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  rose: 'bg-rose-100 text-rose-800 border-rose-300',
-  amber: 'bg-amber-100 text-amber-900 border-amber-300',
+  rose: 'bg-marca-100 text-marca-800 border-marca-300',
+  amber: 'bg-ouro-100 text-ouro-900 border-ouro-300',
   slate: 'bg-slate-100 text-slate-700 border-slate-300',
 }
 
@@ -55,7 +55,7 @@ export function DetalheParticipacao({ h, grande = false }) {
             <li
               key={i}
               className={`flex items-center justify-between gap-2 rounded-xl border-2 ${t.alt} ${
-                correta ? 'border-emerald-400 bg-emerald-50' : escolhida ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'
+                correta ? 'border-emerald-400 bg-emerald-50' : escolhida ? 'border-marca-400 bg-marca-50' : 'border-slate-200 bg-white'
               }`}
             >
               <span className="text-slate-900">
@@ -63,8 +63,8 @@ export function DetalheParticipacao({ h, grande = false }) {
               </span>
               <span className="flex shrink-0 items-center gap-1 font-bold">
                 {correta && <span className="text-emerald-700">{grande ? 'certa' : ''}</span>}
-                {escolhida && <span className={correta ? 'text-emerald-700' : 'text-rose-700'}>{correta && grande ? '· ' : ''}sua resposta</span>}
-                {correta ? <Check size={t.icone} className="text-emerald-600" /> : escolhida ? <X size={t.icone} className="text-rose-600" /> : null}
+                {escolhida && <span className={correta ? 'text-emerald-700' : 'text-marca-700'}>{correta && grande ? '· ' : ''}sua resposta</span>}
+                {correta ? <Check size={t.icone} className="text-emerald-600" /> : escolhida ? <X size={t.icone} className="text-marca-600" /> : null}
               </span>
             </li>
           )

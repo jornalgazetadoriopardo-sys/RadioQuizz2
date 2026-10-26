@@ -32,7 +32,7 @@ function AppLogado() {
   const voltar = () => setTela('inicio')
   return (
     <div className="flex h-full flex-col bg-slate-50">
-      {erro && <p className="bg-rose-100 px-5 py-3 text-base font-semibold text-rose-800">{mensagemDeErro(erro)}</p>}
+      {erro && <p className="bg-red-100 px-5 py-3 text-base font-semibold text-red-800">{mensagemDeErro(erro)}</p>}
       <div key={tela} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-10 pt-4 animate-fade-up">
         {tela === 'inicio' && <Inicio irPara={setTela} eu={eu} />}
         {tela === 'ranking' && <Ranking ranking={ranking} voltar={voltar} />}
@@ -64,7 +64,7 @@ function Inicio({ irPara, eu }) {
           <p className="text-lg text-slate-700">
             {eu ? (
               <>
-                <b className="text-amber-700">{fmt(eu.pontos)} pontos</b> · {eu.posicao}º lugar
+                <b className="text-ouro-700">{fmt(eu.pontos)} pontos</b> · {eu.posicao}º lugar
               </>
             ) : (
               'Acerte uma pergunta para entrar no ranking'
@@ -75,18 +75,18 @@ function Inicio({ irPara, eu }) {
 
       {/* Cartão principal: o que fazer agora */}
       {rodadaNoAr && !respondida && (
-        <div className="rounded-3xl bg-rose-600 p-5 text-white shadow-lg shadow-rose-600/30">
-          <p className="flex items-center gap-2 text-lg font-extrabold uppercase tracking-wide">
-            <span className="h-3 w-3 animate-pulse rounded-full bg-white" /> Pergunta no ar!
+        <div className="fundo-marca rounded-3xl p-5 text-white shadow-lg shadow-marca-700/30">
+          <p className="flex items-center gap-2 text-lg font-extrabold uppercase tracking-wide text-ouro-300">
+            <span className="h-3 w-3 animate-pulse rounded-full bg-ouro-300" /> Pergunta no ar!
           </p>
           <p className="mt-2 text-2xl font-extrabold leading-tight">{rodadaNoAr.titulo}</p>
           <p className="mt-2 text-xl">
-            Vale <b>{fmt(rodadaNoAr.pontos)} pontos</b>
+            Vale <b className="text-ouro-300">{fmt(rodadaNoAr.pontos)} pontos</b>
           </p>
           <FechaEm rodada={rodadaNoAr} />
           <button
             onClick={() => irPara('rodada')}
-            className="mt-5 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl bg-white text-xl font-extrabold text-rose-700 shadow-md active:scale-[.98]"
+            className="mt-5 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl bg-ouro-400 text-xl font-extrabold text-marca-900 shadow-md shadow-black/20 active:scale-[.98]"
           >
             <Play size={26} fill="currentColor" /> RESPONDER AGORA
           </button>
@@ -96,7 +96,7 @@ function Inicio({ irPara, eu }) {
       {rodadaNoAr && respondida && (
         <div className={`rounded-3xl p-5 ${resposta.acertou ? 'bg-emerald-600 text-white' : 'bg-white text-slate-900 ring-2 ring-slate-200'}`}>
           <p className="flex items-center gap-2 text-2xl font-extrabold">
-            {resposta.acertou ? <CheckCircle2 size={30} /> : <XCircle size={30} className="text-rose-600" />}
+            {resposta.acertou ? <CheckCircle2 size={30} /> : <XCircle size={30} className="text-red-600" />}
             {resposta.acertou ? 'Você acertou!' : 'Você já respondeu'}
           </p>
           <p className="mt-2 text-xl">
@@ -109,7 +109,7 @@ function Inicio({ irPara, eu }) {
       {!rodadaNoAr && (
         <div className="rounded-3xl bg-white p-5 ring-2 ring-slate-200">
           <div className="flex items-center gap-3">
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-rose-100 text-rose-700">
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-marca-100 text-marca-700">
               <Radio size={30} />
             </div>
             <p className="text-2xl font-extrabold leading-tight text-slate-900">Aguarde a próxima pergunta</p>
@@ -125,8 +125,8 @@ function Inicio({ irPara, eu }) {
 
       {/* Menu com botões grandes */}
       <div className="grid grid-cols-2 gap-3">
-        <BotaoMenu icone={Trophy} cor="text-amber-600 bg-amber-100" titulo="Ranking" detalhe={posicaoTexto(eu)} onClick={() => irPara('ranking')} />
-        <BotaoMenu icone={Gift} cor="text-rose-700 bg-rose-100" titulo="Prêmios" detalhe="Da semana" onClick={() => irPara('premios')} />
+        <BotaoMenu icone={Trophy} cor="text-ouro-600 bg-ouro-100" titulo="Ranking" detalhe={posicaoTexto(eu)} onClick={() => irPara('ranking')} />
+        <BotaoMenu icone={Gift} cor="text-marca-700 bg-marca-100" titulo="Prêmios" detalhe="Da semana" onClick={() => irPara('premios')} />
         <BotaoMenu icone={History} cor="text-sky-700 bg-sky-100" titulo="Meu histórico" detalhe="Minhas respostas" onClick={() => irPara('historico')} />
         <BotaoMenu icone={CalendarClock} cor="text-violet-700 bg-violet-100" titulo="Horários" detalhe="Perguntas de hoje" onClick={() => irPara('grade')} />
       </div>
@@ -180,15 +180,15 @@ function AvisosCelular() {
   if (agoraNao) return null
 
   return (
-    <div className="rounded-3xl bg-amber-50 p-5 ring-2 ring-amber-200">
+    <div className="rounded-3xl bg-ouro-50 p-5 ring-2 ring-ouro-200">
       <p className="flex items-center gap-2 text-xl font-extrabold text-slate-900">
-        <Bell size={26} className="text-amber-600" /> Quer ser avisado?
+        <Bell size={26} className="text-ouro-600" /> Quer ser avisado?
       </p>
       <p className="mt-2 text-lg leading-relaxed text-slate-800">O celular toca um aviso na hora em que a pergunta entrar no ar.</p>
 
       {estado === 'inativo' && (
         <>
-          <button onClick={ativar} className="mt-4 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 text-xl font-extrabold text-white active:scale-[.98]">
+          <button onClick={ativar} className="mt-4 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-2xl bg-marca-700 text-xl font-extrabold text-white active:scale-[.98]">
             <Bell size={24} /> QUERO SER AVISADO
           </button>
           <p className="mt-2 text-base text-slate-700">
@@ -210,7 +210,7 @@ function AvisosCelular() {
       )}
       {estado === 'bloqueado' && (
         <p className="mt-3 flex gap-2 text-lg leading-relaxed text-slate-800">
-          <BellOff size={22} className="mt-1 shrink-0 text-rose-600" />
+          <BellOff size={22} className="mt-1 shrink-0 text-marca-600" />
           Os avisos estão bloqueados neste celular. Para liberar, toque no cadeado ao lado do endereço do site, depois em
           Notificações e escolha Permitir.
         </p>
@@ -218,7 +218,7 @@ function AvisosCelular() {
       {estado === 'nao-suportado' && (
         <p className="mt-3 text-lg leading-relaxed text-slate-800">Este navegador não recebe avisos. Abra o link no Chrome (Android) ou no Safari (iPhone).</p>
       )}
-      {erro && <p className="mt-2 text-base font-semibold text-rose-700">{erro}</p>}
+      {erro && <p className="mt-2 text-base font-semibold text-red-700">{erro}</p>}
       <button onClick={esconder} className="mt-3 min-h-[44px] w-full text-center text-base font-semibold text-slate-600 underline">
         Agora não
       </button>
@@ -230,11 +230,14 @@ function AvisosCelular() {
 function RelogioOuvinte() {
   const agora = useRelogio()
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-2.5 text-white">
-      <span className="flex items-center gap-2 text-base font-semibold">
-        <Clock size={20} /> Agora são
+    <div className="flex items-center justify-between gap-3 rounded-3xl bg-white px-4 py-3 ring-2 ring-slate-200">
+      <img src="/logo-difusora.png" alt={`${RADIO.nome} ${RADIO.frequencia}`} className="h-12 w-auto" />
+      <span className="text-right">
+        <span className="flex items-center justify-end gap-1.5 text-sm font-semibold text-slate-600">
+          <Clock size={16} /> Agora são
+        </span>
+        <span className="block text-2xl font-extrabold tabular-nums text-marca-800">{fmtHora(agora)}</span>
       </span>
-      <span className="text-2xl font-extrabold tabular-nums">{fmtHora(agora)}</span>
     </div>
   )
 }
@@ -298,7 +301,7 @@ function Ranking({ ranking, voltar }) {
     <>
       <Titulo voltar={voltar}>Ranking da semana</Titulo>
       {eu && (
-        <div className="mb-4 rounded-2xl bg-rose-600 p-4 text-white">
+        <div className="mb-4 rounded-2xl bg-marca-600 p-4 text-white">
           <p className="text-lg">Sua posição</p>
           <p className="text-3xl font-extrabold">{eu.posicao}º lugar</p>
           <p className="text-xl">{fmt(eu.pontos)} pontos</p>
@@ -307,9 +310,9 @@ function Ranking({ ranking, voltar }) {
       {top.length ? (
         <Caixa className="divide-y-2 divide-slate-100">
           {top.map((o) => (
-            <div key={o.posicao} className={`flex items-center gap-3 px-4 py-4 ${o.eu ? 'bg-rose-50' : ''}`}>
+            <div key={o.posicao} className={`flex items-center gap-3 px-4 py-4 ${o.eu ? 'bg-marca-50' : ''}`}>
               <span className="w-10 text-center text-2xl font-extrabold text-slate-700">{medalha[o.posicao] ?? `${o.posicao}º`}</span>
-              <span className={`min-w-0 flex-1 truncate text-xl ${o.eu ? 'font-extrabold text-rose-700' : 'font-semibold text-slate-900'}`}>
+              <span className={`min-w-0 flex-1 truncate text-xl ${o.eu ? 'font-extrabold text-marca-700' : 'font-semibold text-slate-900'}`}>
                 {o.nome}
                 {o.eu && ' (você)'}
               </span>
@@ -339,11 +342,11 @@ function Grade({ voltar }) {
           const noAr = r.status === 'no_ar'
           const situacao = resp ? (resp.acertou ? 'Você acertou' : 'Você respondeu') : noAr ? 'No ar agora!' : r.status === 'encerrada' ? 'Encerrada' : 'Ainda vai começar'
           return (
-            <Caixa key={r.id} className={`flex items-center gap-4 p-4 ${noAr && !resp ? 'ring-rose-500' : ''}`}>
+            <Caixa key={r.id} className={`flex items-center gap-4 p-4 ${noAr && !resp ? 'ring-marca-500' : ''}`}>
               <span className="text-2xl font-extrabold text-slate-900">{fmtHorario(r.horario)}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-lg font-semibold leading-snug text-slate-900">{r.titulo}</p>
-                <p className={`text-base font-semibold ${noAr && !resp ? 'text-rose-700' : resp?.acertou ? 'text-emerald-700' : 'text-slate-600'}`}>
+                <p className={`text-base font-semibold ${noAr && !resp ? 'text-marca-700' : resp?.acertou ? 'text-emerald-700' : 'text-slate-600'}`}>
                   {situacao} · {fmt(r.pontos)} pontos
                 </p>
               </div>
@@ -363,7 +366,7 @@ function Premios({ voltar }) {
       <div className="space-y-3">
         {premios.map((p) => (
           <Caixa key={p.id} className="flex items-center gap-4 p-4">
-            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-amber-100 text-2xl font-extrabold text-amber-700">{p.colocacao}º</div>
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-ouro-100 text-2xl font-extrabold text-ouro-700">{p.colocacao}º</div>
             <div className="min-w-0">
               <p className="text-xl font-extrabold leading-snug text-slate-900">{p.titulo}</p>
               <p className="text-base text-slate-700">Oferecido por {p.oferecido_por}</p>
@@ -427,10 +430,10 @@ function Ajuda({ voltar }) {
             onChange={(e) => setMensagem(e.target.value)}
             rows={5}
             maxLength={2000}
-            className="w-full rounded-2xl border-2 border-slate-300 bg-white p-4 text-lg outline-none focus:border-rose-500"
+            className="w-full rounded-2xl border-2 border-slate-300 bg-white p-4 text-lg outline-none focus:border-marca-500"
           />
-          {erro && <p className="text-lg text-rose-700">{erro}</p>}
-          <button disabled={!mensagem.trim() || estado === 'enviando'} className="min-h-[60px] w-full rounded-2xl bg-rose-600 text-xl font-extrabold text-white disabled:opacity-50">
+          {erro && <p className="text-lg text-red-700">{erro}</p>}
+          <button disabled={!mensagem.trim() || estado === 'enviando'} className="min-h-[60px] w-full rounded-2xl bg-marca-600 text-xl font-extrabold text-white disabled:opacity-50">
             Enviar mensagem
           </button>
         </form>
@@ -457,7 +460,7 @@ function MeuHistorico({ voltar }) {
       <p className="mb-4 text-lg leading-relaxed text-slate-700">
         Aqui ficam todas as suas respostas. Se precisar reclamar de algo, informe à rádio o <b>número do protocolo</b>.
       </p>
-      {erro && <p className="text-lg text-rose-700">{erro}</p>}
+      {erro && <p className="text-lg text-red-700">{erro}</p>}
       {!itens && !erro && <Carregando />}
       {itens?.length === 0 && <Caixa className="p-6 text-center text-xl text-slate-700">Você ainda não respondeu nenhuma pergunta.</Caixa>}
       <div className="space-y-3">
@@ -477,7 +480,7 @@ function MeuHistorico({ voltar }) {
                 </span>
                 <span className="text-lg font-extrabold text-slate-900">{fmt(h.pontos)} pts</span>
               </div>
-              <p className="mt-2 flex items-center gap-1 text-base font-semibold text-rose-700">
+              <p className="mt-2 flex items-center gap-1 text-base font-semibold text-marca-700">
                 {aberto === h.protocolo ? 'Esconder detalhes' : 'Ver a pergunta e a resposta'} <ChevronRight size={18} className={aberto === h.protocolo ? 'rotate-90' : ''} />
               </p>
             </button>

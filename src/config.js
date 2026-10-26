@@ -1,7 +1,7 @@
 // Identidade da rádio — troque aqui para personalizar.
 export const RADIO = {
   nome: 'Difusora FM',
-  frequencia: '107.3',
+  frequencia: '107,3',
   cidade: 'Casa Branca',
   slogan: 'Quiz & Premiação Interativa',
 }

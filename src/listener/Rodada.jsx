@@ -82,7 +82,7 @@ export default function Rodada({ aoSair }) {
       )}
       {(etapa === 'abrindo' || etapa === 'entrando') && (
         <div className="flex h-full flex-col items-center justify-center gap-3 text-xl font-semibold text-slate-700">
-          <Loader2 className="animate-spin text-rose-600" size={44} /> {etapa === 'entrando' ? 'Entrando na rodada…' : 'Abrindo a pergunta…'}
+          <Loader2 className="animate-spin text-marca-600" size={44} /> {etapa === 'entrando' ? 'Entrando na rodada…' : 'Abrindo a pergunta…'}
         </div>
       )}
       {etapa === 'pergunta' && (
@@ -130,7 +130,7 @@ function BotaoGrande({ className = 'bg-slate-900 text-white', children, ...props
 
 function Anuncio({ segundos, patrocinador, aoTerminar, titulo, texto, cor }) {
   const { segundos: s, fracao, oculto } = useContagem(segundos, aoTerminar, { pausarQuandoOculto: true })
-  const aviso = cor === 'emerald' ? 'bg-emerald-600' : 'bg-rose-600'
+  const aviso = cor === 'emerald' ? 'bg-emerald-600' : 'bg-marca-600'
   return (
     <div className="flex min-h-full flex-col animate-fade-up">
       <div className={`flex items-center gap-4 rounded-3xl p-4 text-white ${aviso}`}>
@@ -140,13 +140,13 @@ function Anuncio({ segundos, patrocinador, aoTerminar, titulo, texto, cor }) {
           <p className="mt-1 text-lg leading-snug">{texto}</p>
         </div>
       </div>
-      {oculto && <p className="mt-3 rounded-xl bg-amber-100 p-3 text-center text-lg font-bold text-amber-900">Contagem parada. Volte para esta tela.</p>}
+      {oculto && <p className="mt-3 rounded-xl bg-ouro-100 p-3 text-center text-lg font-bold text-ouro-900">Contagem parada. Volte para esta tela.</p>}
 
       <div className="flex flex-1 flex-col justify-center gap-4 py-6">
         <p className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
         <PecaAnuncio p={patrocinador} />
         <div className="h-3 overflow-hidden rounded-full bg-slate-200">
-          <div className="h-full rounded-full bg-rose-600 transition-[width] duration-100 ease-linear" style={{ width: `${(1 - fracao) * 100}%` }} />
+          <div className="h-full rounded-full bg-marca-600 transition-[width] duration-100 ease-linear" style={{ width: `${(1 - fracao) * 100}%` }} />
         </div>
       </div>
     </div>
@@ -175,7 +175,7 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
       <div className="flex items-center gap-3">
         <div
           className={`grid h-16 w-16 shrink-0 place-items-center rounded-full text-3xl font-extrabold tabular-nums ${
-            urgente ? 'animate-pulse bg-rose-600 text-white' : 'bg-white text-slate-900 ring-2 ring-slate-300'
+            urgente ? 'animate-pulse bg-red-600 text-white' : 'bg-white text-slate-900 ring-2 ring-slate-300'
           }`}
         >
           {segundos}
@@ -183,12 +183,12 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
         <div className="flex-1">
           <p className="text-lg font-bold text-slate-800">{urgente ? 'Rápido! O tempo está acabando' : 'Segundos para responder'}</p>
           <div className="mt-1.5 h-3 overflow-hidden rounded-full bg-slate-200">
-            <div className={`h-full rounded-full transition-[width] duration-100 ease-linear ${urgente ? 'bg-rose-600' : 'bg-slate-800'}`} style={{ width: `${fracaoTotal * 100}%` }} />
+            <div className={`h-full rounded-full transition-[width] duration-100 ease-linear ${urgente ? 'bg-red-600' : 'bg-marca-700'}`} style={{ width: `${fracaoTotal * 100}%` }} />
           </div>
         </div>
       </div>
 
-      <p className="mt-5 text-lg font-bold text-rose-700">Vale {fmt(rodada.pontos)} pontos</p>
+      <p className="mt-5 text-lg font-bold text-marca-700">Vale {fmt(rodada.pontos)} pontos</p>
       <h2 className="mt-1 text-2xl font-extrabold leading-snug text-slate-900">{pergunta.pergunta}</h2>
 
       <p className="mt-5 text-lg text-slate-700">{enviando ? 'Enviando sua resposta…' : 'Toque na resposta certa:'}</p>
@@ -202,12 +202,12 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
               disabled={enviando}
               aria-pressed={marcada}
               className={`flex min-h-[64px] w-full items-center gap-3 rounded-2xl border-[3px] px-3 py-2 text-left transition active:scale-[.98] ${
-                marcada ? 'border-rose-600 bg-rose-50' : enviando ? 'border-slate-200 bg-white opacity-50' : 'border-slate-200 bg-white'
+                marcada ? 'border-marca-600 bg-marca-50' : enviando ? 'border-slate-200 bg-white opacity-50' : 'border-slate-200 bg-white'
               }`}
             >
               <span
                 className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-xl font-extrabold ${
-                  marcada ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-800'
+                  marcada ? 'bg-marca-600 text-white' : 'bg-slate-100 text-slate-800'
                 }`}
               >
                 {marcada ? <Loader2 size={24} className="animate-spin" /> : String.fromCharCode(65 + i)}
@@ -230,7 +230,7 @@ function Resultado({ rodada, resultado, aoSair }) {
     <div className="flex min-h-full flex-col animate-fade-up">
       <div className={`rounded-3xl p-6 text-center text-white ${acertou ? 'bg-emerald-600' : 'bg-slate-800'}`}>
         <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-white animate-pop">
-          {acertou ? <Check size={48} className="text-emerald-600" /> : <X size={48} className="text-rose-600" />}
+          {acertou ? <Check size={48} className="text-emerald-600" /> : <X size={48} className="text-red-600" />}
         </div>
         <h2 className="mt-4 text-3xl font-extrabold">{titulo}</h2>
         <p className="mt-2 text-2xl">

@@ -35,7 +35,7 @@ export function Campo({ rotulo, className = '', children }) {
   )
 }
 
-export const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:ring-4 focus:ring-rose-100'
+export const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-marca-400 focus:ring-4 focus:ring-marca-100'
 
 export function Texto({ valor, onChange, multilinha, ...props }) {
   return multilinha ? (
@@ -51,10 +51,10 @@ export function Numero({ valor, onChange, ...props }) {
 
 export function Botao({ variante = 'primario', className = '', children, ...props }) {
   const v = {
-    primario: 'bg-rose-600 text-white hover:bg-rose-700',
+    primario: 'bg-marca-600 text-white hover:bg-marca-700',
     secundario: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-    perigo: 'bg-white text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50',
-    escuro: 'bg-slate-900 text-white hover:bg-slate-800',
+    perigo: 'bg-white text-red-600 ring-1 ring-red-200 hover:bg-red-50',
+    escuro: 'bg-marca-800 text-white hover:bg-marca-900',
   }
   return (
     <button className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm transition active:scale-[.98] disabled:opacity-40 ${v[variante]} ${className}`} {...props}>

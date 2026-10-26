@@ -1,1 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#e11d48"/><circle cx="32" cy="32" r="5" fill="#fff"/><path d="M22 22a14 14 0 0 0 0 20M42 22a14 14 0 0 1 0 20M16 16a22 22 0 0 0 0 32M48 16a22 22 0 0 1 0 32" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ouro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FCE45A"/>
+      <stop offset=".55" stop-color="#F1C623"/>
+      <stop offset="1" stop-color="#E2A818"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#363C80"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" opacity=".9">
+    <path d="M104 304a64 64 0 0 0 0 64"/>
+    <path d="M72 280a108 108 0 0 0 0 112"/>
+  </g>
+  <path transform="translate(40 -6)" fill="url(#ouro)" d="M262 104c0-12 12-20 23-15 52 22 96 54 116 102 6 15-11 27-23 17-22-19-48-31-76-37v186c0 52-44 89-96 89-46 0-80-28-80-67 0-44 42-78 94-78 15 0 29 3 42 8z"/>
+</svg>
