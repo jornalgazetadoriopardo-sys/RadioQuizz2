@@ -134,8 +134,26 @@ export const horaSP = () => agoraServidor().toLocaleTimeString('pt-BR', { timeZo
 export const diaMes = (data) => (data ? `${data.slice(8, 10)}/${data.slice(5, 7)}` : '')
 /** "10:30:00" → "10:30"; "10:30:45" fica com os segundos. */
 export const fmtHorario = (h) => (h && h.length > 5 && h.endsWith(':00') ? h.slice(0, 5) : h ?? '')
-/** "10:30" se for hoje (ou sem data), "22/10 às 10:30" se for outro dia. */
-export const quandoTexto = (r) => (r.data && r.data !== hojeSP() ? `${diaMes(r.data)} às ${fmtHorario(r.horario)}` : fmtHorario(r.horario))
+/** Nome da rodada para o ouvinte: a categoria (rodadas antigas sem categoria usam o título). */
+export const nomeRodada = (r) => r?.categoria?.trim() || r?.titulo || ''
+/** "10:00" → "10 horas", "10:30" → "10h30", "10:30:15" → "10h30min15s" */
+export const horaFalada = (h) => {
+  const [hh, mm, ss = '00'] = (h ?? '').split(':')
+  if (!hh) return ''
+  const n = Number(hh)
+  if (mm === '00' && ss === '00') return `${n} ${n === 1 ? 'hora' : 'horas'}`
+  return ss === '00' ? `${n}h${mm}` : `${n}h${mm}min${ss}s`
+}
+/** Quando é a próxima rodada: "às 10h30", "amanhã, às 10h30" ou "no dia 28/10, às 10h30". */
+export const quandoFalado = (r) => {
+  const hoje = hojeSP()
+  const amanha = new Date(`${hoje}T12:00:00Z`)
+  amanha.setUTCDate(amanha.getUTCDate() + 1)
+  const dia = !r.data || r.data === hoje ? '' : r.data === amanha.toISOString().slice(0, 10) ? 'amanhã, ' : `no dia ${diaMes(r.data)}, `
+  return `${dia}às ${horaFalada(r.horario)}`
+}
+/** "que será amanhã, às 10h30, sobre Música" */
+export const proximaFalada = (r) => `que será ${quandoFalado(r)}${r.categoria?.trim() ? `, sobre ${r.categoria.trim()}` : ''}`
 /** "10:30" → "10:30:00" (o banco guarda sempre com segundos). */
 export const comSegundos = (h) => (h && h.length === 5 ? `${h}:00` : h)
 /** Segundos entre dois horários do mesmo dia ("10:30:00" → "10:30:45" = 45). */

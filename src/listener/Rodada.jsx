@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Eye, Hand, Loader2, RadioTower, Send, Volume2, X } from 'lucide-react'
 import { DURACOES } from '../config.js'
-import { fmt, quandoTexto, useDados } from '../store.jsx'
+import { fmt, nomeRodada, proximaFalada, useDados } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { useContagem } from '../ui.jsx'
 import { PecaAnuncio } from '../anuncios.jsx'
@@ -142,7 +142,7 @@ function Confirmar({ rodada, aoParticipar, aoSair }) {
       <p className="flex items-center gap-2 text-lg font-extrabold uppercase tracking-wide text-marca-700">
         <span className="h-3 w-3 animate-pulse rounded-full bg-red-500" /> Pergunta no ar
       </p>
-      <p className="mt-1 text-2xl font-extrabold leading-tight text-slate-900">{rodada.titulo}</p>
+      <p className="mt-1 text-2xl font-extrabold leading-tight text-slate-900">{nomeRodada(rodada)}</p>
       <p className="mt-1 text-xl text-slate-700">
         Vale <b className="text-marca-700">{fmt(rodada.pontos)} pontos</b>
       </p>
@@ -392,7 +392,7 @@ function Resultado({ rodada, resultado, aoSair }) {
 
       {proximaRodada && proximaRodada.id !== rodada.id && (
         <p className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-center text-xl text-slate-800">
-          Próxima pergunta: <b>{quandoTexto(proximaRodada)}</b>
+          Aguarde a próxima pergunta, <b>{proximaFalada(proximaRodada)}</b>.
         </p>
       )}
 

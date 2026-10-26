@@ -598,7 +598,7 @@ function sortearPontos(nivel) {
   return Math.round((min + Math.random() * (max - min)) * 100) / 100
 }
 
-const CAMPOS_RODADA = ['id', 'data', 'horario', 'horario_fim', 'modo', 'categoria', 'titulo', 'descricao', 'nivel', 'pontos', 'tempo_resposta']
+const CAMPOS_RODADA = ['id', 'data', 'horario', 'horario_fim', 'modo', 'categoria', 'nivel', 'pontos', 'tempo_resposta']
 const HORA = /^\d{2}:\d{2}(:\d{2})?$/
 
 /** Texto curto do agendamento: "Automático · 21/10 · 10:30 às 10:40" ou "Manual · 10:30". */
@@ -611,7 +611,7 @@ function agendaTexto(r) {
 }
 
 function validarRodada(r) {
-  if (!r.titulo.trim()) return 'Preencha o título do card.'
+  if (!r.categoria?.trim()) return 'Preencha a categoria (o assunto da pergunta).'
   if (!r.pergunta.trim()) return 'Preencha a pergunta.'
   if (!r.alternativas.every((a) => a.trim())) return 'Preencha as quatro alternativas.'
   return validarAgenda(r)
@@ -646,6 +646,10 @@ function Rodadas() {
     rodada.data = rodada.data || null
     rodada.horario = comSegundos(rodada.horario)
     rodada.horario_fim = comSegundos(rodada.horario_fim) || null
+    // Sem campo de título: o nome da rodada (painel, histórico e notificações) é a categoria
+    rodada.categoria = rodada.categoria.trim()
+    rodada.titulo = rodada.categoria
+    rodada.descricao = ''
     const { error } = await supabase.from('rodadas').upsert(rodada)
     if (error) throw error
     const { error: e2 } = await supabase
@@ -685,7 +689,7 @@ function Rodadas() {
             {r.data && <span className="block text-[10px] text-slate-500">{diaMes(r.data)}</span>}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{r.titulo || 'Sem título'}</p>
+            <p className="truncate text-sm font-semibold">{r.categoria || r.titulo || 'Sem categoria'}</p>
             <p className="truncate text-xs text-slate-500">{agendaTexto(r)} • +{fmt(r.pontos)} pts</p>
           </div>
           {r.status === 'no_ar' ? <Selo>No ar</Selo> : r.modo === 'automatico' && <Selo cor="slate" className="normal-case">Auto</Selo>}
@@ -780,14 +784,8 @@ function Rodadas() {
             </div>
             <span className="mt-1 block text-[11px] text-slate-400">Use valores quebrados (ex.: 53,75) para evitar empates no ranking.</span>
           </div>
-          <Campo rotulo="Categoria" className="sm:col-span-3">
-            <Texto valor={r.categoria} onChange={(v) => set('categoria', v)} />
-          </Campo>
-          <Campo rotulo="Título do card" className="sm:col-span-6">
-            <Texto valor={r.titulo} onChange={(v) => set('titulo', v)} />
-          </Campo>
-          <Campo rotulo="Descrição (aparece na tela inicial)" className="sm:col-span-6">
-            <Texto valor={r.descricao} onChange={(v) => set('descricao', v)} />
+          <Campo rotulo="Categoria (o assunto: o ouvinte vê “a próxima pergunta será sobre…”)" className="sm:col-span-6">
+            <Texto valor={r.categoria} onChange={(v) => set('categoria', v)} placeholder="ex.: Música popular brasileira" />
           </Campo>
           <Campo rotulo="Pergunta (só aparece depois do anúncio)" className="sm:col-span-6">
             <Texto multilinha valor={r.pergunta} onChange={(v) => set('pergunta', v)} />

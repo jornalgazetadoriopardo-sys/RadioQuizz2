@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Bell, BellOff, Hand, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
-import { fmt, fmtHorario, hojeSP, quandoTexto, useDados, useRanking } from '../store.jsx'
+import { fmt, fmtHorario, hojeSP, nomeRodada, proximaFalada, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { Avatar } from '../ui.jsx'
 import { fmtFalta, fmtHora, instanteRodada, useRelogio } from '../relogio.js'
@@ -102,7 +102,7 @@ function Inicio({ irPara, eu }) {
           <p className="flex items-center gap-2 text-lg font-extrabold uppercase tracking-wide text-ouro-300">
             <span className="h-3 w-3 animate-pulse rounded-full bg-ouro-300" /> Pergunta no ar!
           </p>
-          <p className="mt-2 text-2xl font-extrabold leading-tight">{rodadaNoAr.titulo}</p>
+          <p className="mt-2 text-2xl font-extrabold leading-tight">{nomeRodada(rodadaNoAr)}</p>
           <p className="mt-2 text-xl">
             Vale <b className="text-ouro-300">{fmt(rodadaNoAr.pontos)} pontos</b>
           </p>
@@ -135,12 +135,16 @@ function Inicio({ irPara, eu }) {
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-marca-100 text-marca-700">
               <Radio size={30} />
             </div>
-            <p className="text-2xl font-extrabold leading-tight text-slate-900">Aguarde a próxima pergunta</p>
+            <p className="text-2xl font-extrabold leading-tight text-slate-900">Aguarde a próxima pergunta{proximaRodada ? '' : '.'}</p>
           </div>
+          {proximaRodada && (
+            <p className="mt-3 rounded-2xl bg-marca-50 px-4 py-3 text-xl font-bold leading-snug text-marca-900">
+              {proximaFalada(proximaRodada).replace(/^q/, 'Q')}.
+            </p>
+          )}
           <p className="mt-3 text-lg leading-relaxed text-slate-700">
             Ouça a <b>{RADIO.frequencia} FM</b>. Quando o locutor anunciar, a pergunta aparece aqui sozinha.
           </p>
-          <ProximaPergunta rodada={proximaRodada} />
         </div>
       )}
 
@@ -281,7 +285,7 @@ function ProximaPergunta({ rodada, claro = false }) {
   if (!rodada) return null
   return (
     <p className={`mt-4 rounded-2xl px-4 py-3 text-lg ${claro ? 'bg-white/20' : 'bg-slate-100 text-slate-800'}`}>
-      Próxima pergunta: <b className="text-xl">{quandoTexto(rodada)}</b>
+      Aguarde a próxima pergunta, <b>{proximaFalada(rodada)}</b>.
     </p>
   )
 }
@@ -368,7 +372,7 @@ function Grade({ voltar }) {
             <Caixa key={r.id} className={`flex items-center gap-4 p-4 ${noAr && !resp ? 'ring-marca-500' : ''}`}>
               <span className="text-2xl font-extrabold text-slate-900">{fmtHorario(r.horario)}</span>
               <div className="min-w-0 flex-1">
-                <p className="text-lg font-semibold leading-snug text-slate-900">{r.titulo}</p>
+                <p className="text-lg font-semibold leading-snug text-slate-900">{nomeRodada(r)}</p>
                 <p className={`text-base font-semibold ${noAr && !resp ? 'text-marca-700' : resp?.acertou ? 'text-emerald-700' : 'text-slate-600'}`}>
                   {situacao} · {fmt(r.pontos)} pontos
                 </p>
