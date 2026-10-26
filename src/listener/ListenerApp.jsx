@@ -246,7 +246,7 @@ function FechaEm({ rodada }) {
   if (!fim || fim <= agora) return null
   return (
     <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-lg font-bold tabular-nums">
-      <Clock size={20} /> Fecha em {fmtFalta(fim - agora)}
+      <Clock size={20} /> Toque em até {fmtFalta(fim - agora)}
     </p>
   )
 }

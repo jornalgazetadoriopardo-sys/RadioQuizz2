@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Loader2, X } from 'lucide-react'
 import { DURACOES } from '../config.js'
 import { fmt, quandoTexto, useDados } from '../store.jsx'
@@ -6,13 +6,14 @@ import { mensagemDeErro, supabase } from '../supabase.js'
 import { useContagem } from '../ui.jsx'
 import { PecaAnuncio } from '../anuncios.jsx'
 
-// Fluxo de uma rodada: anuncio1 → pergunta → anuncio2 → resultado
+// Fluxo de uma rodada: entrando → anuncio1 → pergunta → anuncio2 → resultado
+// Ao entrar, o servidor guarda a vaga: quem entrou com a rodada no ar responde mesmo que ela feche durante o anúncio.
 // O servidor marca a hora em que a pergunta abriu e confere a resposta (ver supabase/migrations).
 export default function Rodada({ aoSair }) {
   const { rodadaNoAr, rodadas, patrocinadores, modoApresentacao, recarregarMinhasRespostas } = useDados()
   // Fixa a rodada ao entrar, mesmo que o admin troque a rodada no ar no meio do caminho.
   const [rodada] = useState(rodadaNoAr)
-  const [etapa, setEtapa] = useState('anuncio1')
+  const [etapa, setEtapa] = useState('entrando')
   const [pergunta, setPergunta] = useState(null)
   const [resultado, setResultado] = useState(null)
   const [erro, setErro] = useState('')
@@ -22,6 +23,23 @@ export default function Rodada({ aoSair }) {
     const i = Math.max(0, rodadas.findIndex((r) => r.id === rodada?.id))
     return [patrocinadores[i % patrocinadores.length], patrocinadores[(i + 1) % patrocinadores.length]]
   }, [patrocinadores, rodadas, rodada])
+
+  // Guarda a vaga na hora em que o ouvinte tocou em "Responder"
+  useEffect(() => {
+    if (!rodada) return
+    let ativo = true
+    supabase.rpc('entrar_na_rodada', { p_rodada: rodada.id }).then(async ({ error }) => {
+      if (!ativo) return
+      if (error?.message.includes('ja_respondida')) return (await responder(null)) && setEtapa('resultado')
+      // banco sem o 011 ainda: segue como antes
+      if (error && !/entrar_na_rodada|schema cache|function/i.test(error.message)) return setErro(mensagemDeErro(error))
+      setEtapa('anuncio1')
+    })
+    return () => {
+      ativo = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!rodada) return <Mensagem texto="Nenhuma pergunta no ar agora." aoSair={aoSair} />
 
@@ -62,9 +80,9 @@ export default function Rodada({ aoSair }) {
           cor="rose"
         />
       )}
-      {etapa === 'abrindo' && (
+      {(etapa === 'abrindo' || etapa === 'entrando') && (
         <div className="flex h-full flex-col items-center justify-center gap-3 text-xl font-semibold text-slate-700">
-          <Loader2 className="animate-spin text-rose-600" size={44} /> Abrindo a pergunta…
+          <Loader2 className="animate-spin text-rose-600" size={44} /> {etapa === 'entrando' ? 'Entrando na rodada…' : 'Abrindo a pergunta…'}
         </div>
       )}
       {etapa === 'pergunta' && (

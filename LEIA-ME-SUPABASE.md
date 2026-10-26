@@ -27,6 +27,8 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
   horário dela, e encerrar à mão antes do horário não cancela mais o agendamento. Cria também o
   **Diagnóstico do agendamento** (Painel Admin → Ao vivo). No fim ele mostra se o agendador está ATIVO e
   quantas vezes conferiu no último minuto.
+- `011_entrada_na_rodada.sql` — o tempo no ar passa a ser o prazo para **entrar** (tocar em Responder). Quem
+  entrou a tempo vê o anúncio e depois responde normalmente, mesmo que a rodada feche durante o anúncio.
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
@@ -75,8 +77,10 @@ e procure a linha com erro no horário da tentativa. Causas comuns:
   Use **Fica no ar por (segundos)** para a rodada ficar aberta só alguns segundos — o encerramento é calculado sozinho.
   O agendador confere a cada 1 segundo (ou a cada 15 s / 1 min, conforme a versão do Supabase; o resultado do
   `009_segundos.sql` mostra qual ficou).
-- Enquanto a rodada está no ar, o ouvinte pode **abrir** a pergunta; quem abriu a tempo ainda tem o **tempo para
-  responder** da pergunta para enviar a resposta. O app mostra ao ouvinte "Fecha em X s".
+- Enquanto a rodada está no ar, o ouvinte pode **tocar em Responder** (o app mostra "Toque em até X s"). Quem entrou
+  a tempo vê o anúncio e depois tem o **tempo para responder** da pergunta, mesmo que a rodada já tenha fechado.
+  Ex.: 10 s no ar + anúncio de 15 s + 20 s para responder. A vaga vale só pelo tempo do anúncio mais longo
+  + 20 s, para ninguém esperar o locutor dar a resposta antes de abrir a pergunta.
 - Numa rodada automática o botão manual continua valendo: **No ar** adianta ou reabre, **Encerrar** fecha antes.
   Se reabrir depois do horário de encerramento, quem fecha é a produção.
 - Abrir uma rodada (manual ou automática) tira do ar a que estava no ar antes.

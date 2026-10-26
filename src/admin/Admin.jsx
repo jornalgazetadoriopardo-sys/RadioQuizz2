@@ -750,8 +750,8 @@ function Rodadas() {
               </Campo>
             </div>
             <p className="text-xs text-slate-500">
-              O ouvinte só consegue <b>abrir</b> a pergunta enquanto a rodada está no ar. Quem abriu a tempo ainda tem o{' '}
-              <b>tempo para responder</b> de cada pergunta (campo abaixo) para enviar a resposta.
+              O tempo no ar é o prazo para o ouvinte <b>tocar em Responder</b>. Quem entrou a tempo vê o anúncio e depois
+              ainda tem o <b>tempo para responder</b> (campo abaixo), mesmo que a rodada feche durante o anúncio.
             </p>
             <p className="text-xs text-slate-500">
               {r.modo === 'automatico'
