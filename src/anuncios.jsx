@@ -26,81 +26,92 @@ export const ehShorts = (url) => /youtube\.com\/shorts\//.test(url ?? '')
 
 /**
  * Vídeo do patrocinador.
- * comSom: o ouvinte acabou de tocar num botão ("Vou participar" / "Confira sua resposta"), então o navegador
- *   deixa o vídeo começar já com som. Se mesmo assim o celular bloquear (alguns iPhones), o vídeo toca sem som
- *   e aparece o botão "Ouvir com som".
+ * comSom: o vídeo é carregado parado (enquanto o ouvinte vê o relógio ou a pergunta) e só começa, já com som,
+ *   quando `tocar` vira true — depois do toque em "Vou participar" / "Confira sua resposta", que é o que o
+ *   navegador exige para liberar o som. Se o celular bloquear mesmo assim (alguns iPhones), toca sem som e
+ *   aparece o botão "Ouvir com som".
+ * Sem comSom (prévia do painel): começa sozinho sem som, com o botão.
  * aoTerminar: chamado quando o vídeo acaba (sem ele, o vídeo fica repetindo).
  */
-function VideoYouTube({ url, vertical, comSom = false, aoTerminar }) {
+function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar }) {
   const id = youtubeId(url)
   const quadro = useRef(null)
-  const [estado, setEstado] = useState({ tocando: false, mudo: !comSom })
+  const [pronto, setPronto] = useState(false)
   const [mostrarBotao, setMostrarBotao] = useState(!comSom)
+  const player = useRef({ estado: -1, mudo: !comSom, mandouTocar: false })
   const fim = useRef(aoTerminar)
   fim.current = aoTerminar
-  const estadoAtual = useRef(estado)
-  estadoAtual.current = estado
 
   const enviar = (func, args = []) => quadro.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*')
 
-  // Escuta o player (tocando, sem som, terminou)
+  // Conversa com o player do YouTube: pede os avisos até ele responder e acompanha o estado
   useEffect(() => {
     const aoReceber = (e) => {
-      if (e.source !== quadro.current?.contentWindow) return
+      if (!quadro.current || e.source !== quadro.current.contentWindow) return
       let d
       try {
         d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
       } catch {
         return
       }
-      const info = d?.info
-      const estadoPlayer = d?.event === 'onStateChange' ? info : info?.playerState
-      if (estadoPlayer === 0) fim.current?.()
-      if (estadoPlayer === 1 || typeof info?.muted === 'boolean')
-        setEstado((s) => ({ tocando: s.tocando || estadoPlayer === 1, mudo: typeof info?.muted === 'boolean' ? info.muted : s.mudo }))
+      if (!d?.event) return
+      player.current.pronto = true
+      setPronto(true)
+      const info = d.info
+      const estado = d.event === 'onStateChange' ? info : info?.playerState
+      if (typeof estado === 'number') player.current.estado = estado
+      if (typeof info?.muted === 'boolean') player.current.mudo = info.muted
+      if (estado === 0) fim.current?.()
+      if (player.current.mandouTocar && player.current.estado === 1) setMostrarBotao(player.current.mudo)
     }
     window.addEventListener('message', aoReceber)
-    return () => window.removeEventListener('message', aoReceber)
+    const chamar = setInterval(() => {
+      if (player.current.pronto) return clearInterval(chamar)
+      quadro.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'anuncio', channel: 'widget' }), '*')
+    }, 400)
+    return () => {
+      window.removeEventListener('message', aoReceber)
+      clearInterval(chamar)
+    }
   }, [])
 
-  // Se em 3 s não começou a tocar com som, toca sem som e mostra o botão
+  // Hora de tocar: com o player pronto, começa com som. Se em 2,5 s não estiver tocando, o celular
+  // bloqueou o som → toca sem som e mostra o botão.
   useEffect(() => {
-    if (!comSom) return
+    if (!comSom || !tocar || !pronto) return
+    player.current.mandouTocar = true
+    enviar('unMute')
+    enviar('setVolume', [100])
+    enviar('playVideo')
     const t = setTimeout(() => {
-      const s = estadoAtual.current
-      if (!s.tocando) {
+      if (player.current.estado !== 1) {
         enviar('mute')
         enviar('playVideo')
-      }
-      if (!s.tocando || s.mudo) setMostrarBotao(true)
-    }, 3000)
+        setMostrarBotao(true)
+      } else if (player.current.mudo) setMostrarBotao(true)
+    }, 2500)
     return () => clearTimeout(t)
-  }, [comSom])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comSom, tocar, pronto])
 
+  // Saiu da tela: para o vídeo
   useEffect(() => {
-    if (comSom && estado.tocando && estado.mudo) setMostrarBotao(true)
-    if (estado.tocando && !estado.mudo) setMostrarBotao(false)
-  }, [comSom, estado])
+    if (comSom && !tocar && player.current.mandouTocar) enviar('pauseVideo')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tocar])
 
   if (!id) return <Aviso texto="Link do YouTube inválido" />
 
-  const aoCarregar = () => {
-    quadro.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'anuncio', channel: 'widget' }), '*')
-    if (comSom) {
-      enviar('unMute')
-      enviar('setVolume', [100])
-      enviar('playVideo')
-    }
-  }
   const ligarSom = () => {
+    player.current.mandouTocar = true
     enviar('unMute')
     enviar('setVolume', [100])
     enviar('playVideo')
     setMostrarBotao(false)
   }
   const params = new URLSearchParams({
-    autoplay: '1', mute: comSom ? '0' : '1', playsinline: '1', controls: '0', rel: '0', modestbranding: '1', enablejsapi: '1',
-    origin: window.location.origin, ...(aoTerminar ? {} : { loop: '1', playlist: id }),
+    autoplay: comSom ? '0' : '1', mute: comSom ? '0' : '1', playsinline: '1', controls: '0', rel: '0', modestbranding: '1',
+    enablejsapi: '1', origin: window.location.origin, ...(aoTerminar ? {} : { loop: '1', playlist: id }),
   })
 
   return (
@@ -109,19 +120,18 @@ function VideoYouTube({ url, vertical, comSom = false, aoTerminar }) {
         <iframe
           ref={quadro}
           src={`https://www.youtube-nocookie.com/embed/${id}?${params}`}
-          onLoad={aoCarregar}
           title="Vídeo do patrocinador"
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
           className="h-full w-full"
         />
       </div>
-      {mostrarBotao && (
+      {mostrarBotao && tocar && (
         <button
           onClick={ligarSom}
-          className="mx-auto mt-3 flex min-h-[52px] items-center gap-2 rounded-full bg-marca-800 px-6 text-lg font-bold text-white shadow-lg active:scale-[.98]"
+          className="mx-auto mt-3 flex min-h-[56px] items-center gap-2 rounded-full bg-marca-800 px-7 text-xl font-bold text-white shadow-lg active:scale-[.98]"
         >
-          <Volume2 size={22} /> Ouvir com som
+          <Volume2 size={24} /> Ouvir com som
         </button>
       )}
     </div>
@@ -347,9 +357,9 @@ function AnuncioSimples({ p }) {
 }
 
 /** A peça do anúncio, conforme o tipo cadastrado. */
-export function PecaAnuncio({ p, comSom = false, aoTerminarVideo }) {
+export function PecaAnuncio({ p, comSom = false, tocar = true, aoTerminarVideo }) {
   if (!p) return <Aviso texto="Espaço publicitário disponível" />
-  if (p.tipo === 'video') return <VideoYouTube key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} aoTerminar={aoTerminarVideo} />
+  if (p.tipo === 'video') return <VideoYouTube key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} />
   if (p.tipo === 'automatico') {
     const L = LAYOUT_COMPONENTE[p.layout] ?? LayoutOferta
     return <L p={p} />

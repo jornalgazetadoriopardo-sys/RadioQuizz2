@@ -78,9 +78,10 @@ export default function Rodada({ aoSair }) {
     <div className="no-scrollbar h-full overflow-y-auto bg-slate-50 px-4 pb-8 pt-5">
       {etapa === 'confirmar' && <Confirmar rodada={rodada} aoParticipar={participar} aoSair={aoSair} />}
       {etapa === 'preparar' && <Preparar aoTerminar={() => setPreparado(true)} esperando={preparado && entrada !== 'ok'} />}
-      {etapa === 'anuncio1' && (
+      {['confirmar', 'preparar', 'anuncio1'].includes(etapa) && (
         <Anuncio
           key="a1"
+          ativo={etapa === 'anuncio1'}
           segundos={curto ?? patrocinador1?.duracao_segundos ?? DURACOES.anuncioPergunta}
           patrocinador={patrocinador1}
           aoTerminar={abrirPergunta}
@@ -105,9 +106,10 @@ export default function Rodada({ aoSair }) {
         />
       )}
       {etapa === 'enviada' && <Enviada aoConferir={() => setEtapa('anuncio2')} />}
-      {etapa === 'anuncio2' && (
+      {['pergunta', 'enviada', 'anuncio2'].includes(etapa) && (
         <Anuncio
           key="a2"
+          ativo={etapa === 'anuncio2'}
           segundos={curto ?? patrocinador2?.duracao_segundos ?? DURACOES.anuncioGabarito}
           patrocinador={patrocinador2}
           aoTerminar={() => setEtapa('resultado')}
@@ -246,35 +248,48 @@ function BotaoGrande({ className = 'bg-slate-900 text-white', children, ...props
   )
 }
 
-function Anuncio({ segundos, patrocinador, aoTerminar, titulo, texto, cor }) {
+/**
+ * Anúncio entre as etapas. Fica montado (escondido) desde a etapa anterior para o vídeo já estar carregado
+ * quando chegar a vez dele; a contagem só começa quando `ativo`.
+ */
+function Anuncio({ ativo, segundos, patrocinador, aoTerminar, titulo, texto, cor }) {
   // termina no fim da contagem ou quando o vídeo acabar, o que vier primeiro
   const terminou = useRef(false)
   const terminar = () => {
-    if (terminou.current) return
+    if (terminou.current || !ativo) return
     terminou.current = true
     aoTerminar()
   }
-  const { segundos: s, fracao, oculto } = useContagem(segundos, terminar, { pausarQuandoOculto: true })
+  return (
+    <div className={ativo ? 'flex min-h-full flex-col animate-fade-up' : 'hidden'} aria-hidden={!ativo}>
+      {ativo && <ContagemAnuncio segundos={segundos} aoTerminar={terminar} titulo={titulo} texto={texto} cor={cor} />}
+      <div className="flex flex-1 flex-col justify-center gap-4 py-6">
+        <p className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
+        <PecaAnuncio p={patrocinador} comSom tocar={ativo} aoTerminarVideo={terminar} />
+      </div>
+    </div>
+  )
+}
+
+function ContagemAnuncio({ segundos, aoTerminar, titulo, texto, cor }) {
+  const { segundos: s, fracao, oculto } = useContagem(segundos, aoTerminar, { pausarQuandoOculto: true })
   const aviso = cor === 'emerald' ? 'bg-emerald-600' : 'bg-marca-600'
   return (
-    <div className="flex min-h-full flex-col animate-fade-up">
-      <div className={`flex items-center gap-4 rounded-3xl p-4 text-white ${aviso}`}>
-        <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-white text-4xl font-extrabold tabular-nums text-slate-900">{s}</div>
-        <div>
-          <p className="text-2xl font-extrabold leading-tight">{titulo}</p>
-          <p className="mt-1 text-lg leading-snug">{texto}</p>
+    <>
+      <div className={`rounded-3xl p-4 text-white ${aviso}`}>
+        <div className="flex items-center gap-4">
+          <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-white text-4xl font-extrabold tabular-nums text-slate-900">{s}</div>
+          <div>
+            <p className="text-2xl font-extrabold leading-tight">{titulo}</p>
+            <p className="mt-1 text-lg leading-snug">{texto}</p>
+          </div>
+        </div>
+        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/25">
+          <div className="h-full rounded-full bg-white transition-[width] duration-100 ease-linear" style={{ width: `${(1 - fracao) * 100}%` }} />
         </div>
       </div>
       {oculto && <p className="mt-3 rounded-xl bg-ouro-100 p-3 text-center text-lg font-bold text-ouro-900">Contagem parada. Volte para esta tela.</p>}
-
-      <div className="flex flex-1 flex-col justify-center gap-4 py-6">
-        <p className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
-        <PecaAnuncio p={patrocinador} comSom aoTerminarVideo={terminar} />
-        <div className="h-3 overflow-hidden rounded-full bg-slate-200">
-          <div className="h-full rounded-full bg-marca-600 transition-[width] duration-100 ease-linear" style={{ width: `${(1 - fracao) * 100}%` }} />
-        </div>
-      </div>
-    </div>
+    </>
   )
 }
 
