@@ -129,7 +129,9 @@ function Confirmar({ rodada, aoParticipar, aoSair }) {
   const fim = fimAgendado && !(rodada.no_ar_em && new Date(rodada.no_ar_em) >= fimAgendado) ? fimAgendado : null
   const falta = fim ? Math.max(0, Math.ceil((fim - agora) / 1000)) : null
   const total = fim ? Math.max(1, (fim - instanteRodada(rodada.data, rodada.horario)) / 1000) : 1
-  const acabou = falta === 0
+  // fechou pelo relógio ou a produção encerrou antes de a pessoa confirmar
+  const { rodadaNoAr } = useDados()
+  const acabou = falta === 0 || rodadaNoAr?.id !== rodada.id
 
   if (acabou) return <Mensagem texto="O tempo para participar desta pergunta acabou. Fique ligado na próxima!" aoSair={aoSair} />
 
@@ -157,6 +159,9 @@ function Confirmar({ rodada, aoParticipar, aoSair }) {
         <Hand size={30} /> VOU PARTICIPAR
       </button>
       <p className="mt-3 text-base text-slate-600">Ao tocar, o anúncio começa com som. Aumente o volume!</p>
+      <button onClick={aoSair} className="mt-6 min-h-[48px] px-4 text-lg font-semibold text-slate-600 underline">
+        Agora não, voltar ao início
+      </button>
     </div>
   )
 }
@@ -315,7 +320,7 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
       <div className="mt-3 space-y-3">
         {pergunta.alternativas.map((alt, i) => {
           const marcada = escolhida === i
-          const c = CORES_ALTERNATIVAS[i % CORES_ALTERNATIVAS.length]
+          const c = COR_ALTERNATIVA
           return (
             <button
               key={i}
@@ -323,7 +328,7 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
               disabled={enviando}
               aria-pressed={marcada}
               className={`flex min-h-[68px] w-full items-center gap-3 rounded-2xl border-b-[5px] bg-gradient-to-br px-3 py-2.5 text-left shadow-md transition active:translate-y-0.5 active:border-b-2 ${c.botao} ${
-                marcada ? 'scale-[1.02] ring-4 ring-slate-900 ring-offset-2' : enviando ? 'opacity-35' : ''
+                marcada ? 'scale-[1.02] ring-4 ring-ouro-400 ring-offset-2' : enviando ? 'opacity-35' : ''
               }`}
             >
               <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-2xl font-black ${c.letra}`}>
@@ -338,13 +343,8 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
   )
 }
 
-// Uma cor para cada alternativa (azul e dourado da Difusora, verde e azul-claro)
-const CORES_ALTERNATIVAS = [
-  { botao: 'from-marca-600 to-marca-800 border-marca-900', letra: 'bg-white/20 text-white', texto: 'text-white' },
-  { botao: 'from-ouro-300 to-ouro-500 border-ouro-700', letra: 'bg-marca-900/15 text-marca-900', texto: 'text-marca-950' },
-  { botao: 'from-emerald-500 to-emerald-700 border-emerald-800', letra: 'bg-white/20 text-white', texto: 'text-white' },
-  { botao: 'from-sky-500 to-sky-700 border-sky-800', letra: 'bg-white/20 text-white', texto: 'text-white' },
-]
+// Todas as alternativas no azul da Difusora, com a letra em dourado
+const COR_ALTERNATIVA = { botao: 'from-marca-600 to-marca-800 border-marca-900', letra: 'bg-ouro-400 text-marca-900', texto: 'text-white' }
 
 function Resultado({ rodada, resultado, aoSair }) {
   const { proximaRodada } = useDados()

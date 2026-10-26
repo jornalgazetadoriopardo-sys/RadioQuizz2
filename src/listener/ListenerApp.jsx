@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Bell, BellOff, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Play, Radio, Trophy, XCircle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bell, BellOff, Hand, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
 import { fmt, fmtHorario, hojeSP, quandoTexto, useDados, useRanking } from '../store.jsx'
@@ -22,19 +22,42 @@ export default function ListenerApp() {
 }
 
 function AppLogado() {
-  const { carregando, erro, minhasRespostas } = useDados()
+  const { carregando, erro, minhasRespostas, rodadaNoAr } = useDados()
   const [tela, setTela] = useState('inicio')
+  const [saiuDe, setSaiuDe] = useState(null)
   const { ranking, eu } = useRanking(10, minhasRespostas)
 
+  // Pergunta entrou no ar (no horário ou pelo botão da produção): abre sozinha a tela "Vou participar",
+  // de qualquer tela do app. Se a pessoa voltar ao início, não abre de novo para a mesma vez no ar.
+  const chaveNoAr = rodadaNoAr ? `${rodadaNoAr.id}:${rodadaNoAr.no_ar_em}` : null
+  const jaRespondeu = rodadaNoAr && minhasRespostas[rodadaNoAr.id]?.respondida_em
+  const emRodada = useRef(null) // qual vez no ar a tela da rodada está mostrando
+  const abrirRodada = () => {
+    emRodada.current = chaveNoAr
+    setTela('rodada')
+  }
+  useEffect(() => {
+    if (tela !== 'rodada' && chaveNoAr && !jaRespondeu && chaveNoAr !== saiuDe && !carregando) abrirRodada()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveNoAr, jaRespondeu, saiuDe, carregando, tela])
+
   if (carregando) return <Carregando texto="Sintonizando…" />
-  if (tela === 'rodada') return <Rodada aoSair={() => setTela('inicio')} />
+  if (tela === 'rodada')
+    return (
+      <Rodada
+        aoSair={() => {
+          setSaiuDe(emRodada.current)
+          setTela('inicio')
+        }}
+      />
+    )
 
   const voltar = () => setTela('inicio')
   return (
     <div className="flex h-full flex-col bg-slate-50">
       {erro && <p className="bg-red-100 px-5 py-3 text-base font-semibold text-red-800">{mensagemDeErro(erro)}</p>}
       <div key={tela} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-10 pt-4 animate-fade-up">
-        {tela === 'inicio' && <Inicio irPara={setTela} eu={eu} />}
+        {tela === 'inicio' && <Inicio irPara={(t) => (t === 'rodada' ? abrirRodada() : setTela(t))} eu={eu} />}
         {tela === 'ranking' && <Ranking ranking={ranking} voltar={voltar} />}
         {tela === 'grade' && <Grade voltar={voltar} />}
         {tela === 'premios' && <Premios voltar={voltar} />}
@@ -88,7 +111,7 @@ function Inicio({ irPara, eu }) {
             onClick={() => irPara('rodada')}
             className="mt-5 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl bg-ouro-400 text-xl font-extrabold text-marca-900 shadow-md shadow-black/20 active:scale-[.98]"
           >
-            <Play size={26} fill="currentColor" /> RESPONDER AGORA
+            <Hand size={28} /> VOU PARTICIPAR
           </button>
         </div>
       )}
