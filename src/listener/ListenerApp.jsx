@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Bell, BellOff, Hand, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
-import { fmt, fmtHorario, hojeSP, nomeRodada, proximaFalada, useDados, useRanking } from '../store.jsx'
+import { fmt, fmtHorario, hojeSP, nomeRodada, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { Avatar } from '../ui.jsx'
 import { fmtFalta, fmtHora, instanteRodada, useRelogio } from '../relogio.js'
 import { usePush } from '../push.js'
 import Rodada from './Rodada.jsx'
+import { TextoProxima } from './TextoProxima.jsx'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora } from '../historico.jsx'
 
 // Telas pensadas para um público mais velho: letras grandes, alto contraste,
@@ -135,13 +136,10 @@ function Inicio({ irPara, eu }) {
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-marca-100 text-marca-700">
               <Radio size={30} />
             </div>
-            <p className="text-2xl font-extrabold leading-tight text-slate-900">Aguarde a próxima pergunta{proximaRodada ? '' : '.'}</p>
-          </div>
-          {proximaRodada && (
-            <p className="mt-3 rounded-2xl bg-marca-50 px-4 py-3 text-xl font-bold leading-snug text-marca-900">
-              {proximaFalada(proximaRodada).replace(/^q/, 'Q')}.
+            <p className="text-xl font-semibold leading-snug text-slate-900">
+              {proximaRodada ? <TextoProxima rodada={proximaRodada} /> : <b className="text-2xl">Aguarde a próxima pergunta.</b>}
             </p>
-          )}
+          </div>
           <p className="mt-3 text-lg leading-relaxed text-slate-700">
             Ouça a <b>{RADIO.frequencia} FM</b>. Quando o locutor anunciar, a pergunta aparece aqui sozinha.
           </p>
@@ -285,7 +283,7 @@ function ProximaPergunta({ rodada, claro = false }) {
   if (!rodada) return null
   return (
     <p className={`mt-4 rounded-2xl px-4 py-3 text-lg ${claro ? 'bg-white/20' : 'bg-slate-100 text-slate-800'}`}>
-      Aguarde a próxima pergunta, <b>{proximaFalada(rodada)}</b>.
+      <TextoProxima rodada={rodada} />
     </p>
   )
 }

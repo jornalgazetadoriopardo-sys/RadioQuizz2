@@ -152,8 +152,6 @@ export const quandoFalado = (r) => {
   const dia = !r.data || r.data === hoje ? '' : r.data === amanha.toISOString().slice(0, 10) ? 'amanhã, ' : `no dia ${diaMes(r.data)}, `
   return `${dia}às ${horaFalada(r.horario)}`
 }
-/** "que será amanhã, às 10h30, sobre Música" */
-export const proximaFalada = (r) => `que será ${quandoFalado(r)}${r.categoria?.trim() ? `, sobre ${r.categoria.trim()}` : ''}`
 /** "10:30" → "10:30:00" (o banco guarda sempre com segundos). */
 export const comSegundos = (h) => (h && h.length === 5 ? `${h}:00` : h)
 /** Segundos entre dois horários do mesmo dia ("10:30:00" → "10:30:45" = 45). */

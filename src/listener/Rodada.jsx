@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Eye, Hand, Loader2, RadioTower, Send, Volume2, X } from 'lucide-react'
 import { DURACOES } from '../config.js'
-import { fmt, nomeRodada, proximaFalada, useDados } from '../store.jsx'
+import { fmt, nomeRodada, useDados } from '../store.jsx'
+import { TextoProxima } from './TextoProxima.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { useContagem } from '../ui.jsx'
 import { PecaAnuncio } from '../anuncios.jsx'
-import { instanteRodada, useRelogio } from '../relogio.js'
+import { agoraServidor, instanteRodada, useRelogio } from '../relogio.js'
 
 // Fluxo de uma rodada:
 //   confirmar ("Vou participar", com o relógio da rodada) → preparar (3, 2, 1) → anuncio1 → pergunta
@@ -13,7 +14,15 @@ import { instanteRodada, useRelogio } from '../relogio.js'
 // Os toques em "Vou participar" e "Confira sua resposta" são o que permite ao navegador tocar o vídeo já com som.
 // Ao confirmar, o servidor guarda a vaga: quem entrou com a rodada no ar responde mesmo que ela feche durante o anúncio.
 // O servidor marca a hora em que a pergunta abriu e confere a resposta (ver supabase/migrations).
+// Rodada sem relógio (manual, ou reaberta depois do horário): contagem curta antes do vídeo
 const SEGUNDOS_PREPARAR = 3
+
+/** Fim do tempo para confirmar: o encerramento da rodada automática (null se não tiver relógio). */
+function fimDaEntrada(rodada) {
+  const fim = rodada.modo === 'automatico' ? instanteRodada(rodada.data, rodada.horario_fim) : null
+  // reaberta à mão depois do horário: não tem relógio
+  return fim && !(rodada.no_ar_em && new Date(rodada.no_ar_em) >= fim) ? fim : null
+}
 
 export default function Rodada({ aoSair }) {
   const { rodadaNoAr, rodadas, patrocinadores, modoApresentacao, recarregarMinhasRespostas } = useDados()
@@ -22,6 +31,7 @@ export default function Rodada({ aoSair }) {
   const [etapa, setEtapa] = useState('confirmar')
   const [entrada, setEntrada] = useState(null) // null → 'enviando' → 'ok'
   const [preparado, setPreparado] = useState(false)
+  const [inicioVideo, setInicioVideo] = useState(null)
   const [pergunta, setPergunta] = useState(null)
   const [resultado, setResultado] = useState(null)
   const [erro, setErro] = useState('')
@@ -50,7 +60,10 @@ export default function Rodada({ aoSair }) {
   }
 
   // "Vou participar": guarda a vaga no servidor enquanto a contagem 3, 2, 1 corre
+  // O relógio continua até o fim do tempo da rodada: todos começam o vídeo e a pergunta juntos
   const participar = async () => {
+    const fim = fimDaEntrada(rodada)
+    setInicioVideo(fim && fim - agoraServidor() > 1000 ? fim : new Date(agoraServidor().getTime() + SEGUNDOS_PREPARAR * 1000))
     setEtapa('preparar')
     setEntrada('enviando')
     const { error } = await supabase.rpc('entrar_na_rodada', { p_rodada: rodada.id })
@@ -77,7 +90,7 @@ export default function Rodada({ aoSair }) {
   return (
     <div className="no-scrollbar h-full overflow-y-auto bg-slate-50 px-4 pb-8 pt-5">
       {etapa === 'confirmar' && <Confirmar rodada={rodada} aoParticipar={participar} aoSair={aoSair} />}
-      {etapa === 'preparar' && <Preparar aoTerminar={() => setPreparado(true)} esperando={preparado && entrada !== 'ok'} />}
+      {etapa === 'preparar' && <Preparar alvo={inicioVideo} aoTerminar={() => setPreparado(true)} esperando={preparado && entrada !== 'ok'} />}
       {['confirmar', 'preparar', 'anuncio1'].includes(etapa) && (
         <Anuncio
           key="a1"
@@ -126,9 +139,7 @@ export default function Rodada({ aoSair }) {
 /** Relógio grande da rodada + botão "Vou participar". */
 function Confirmar({ rodada, aoParticipar, aoSair }) {
   const agora = useRelogio()
-  const fimAgendado = rodada.modo === 'automatico' ? instanteRodada(rodada.data, rodada.horario_fim) : null
-  // reaberta à mão depois do horário: não tem relógio
-  const fim = fimAgendado && !(rodada.no_ar_em && new Date(rodada.no_ar_em) >= fimAgendado) ? fimAgendado : null
+  const fim = fimDaEntrada(rodada)
   const falta = fim ? Math.max(0, Math.ceil((fim - agora) / 1000)) : null
   const total = fim ? Math.max(1, (fim - instanteRodada(rodada.data, rodada.horario)) / 1000) : 1
   // fechou pelo relógio ou a produção encerrou antes de a pessoa confirmar
@@ -168,14 +179,34 @@ function Confirmar({ rodada, aoParticipar, aoSair }) {
   )
 }
 
-/** Contagem 3, 2, 1 antes do vídeo. */
-function Preparar({ aoTerminar, esperando }) {
-  const { segundos, fracao } = useContagem(SEGUNDOS_PREPARAR, aoTerminar)
+/** Depois do "Vou participar": o relógio continua até a hora marcada e aí começa o vídeo. */
+function Preparar({ alvo, aoTerminar, esperando }) {
+  const [agora, setAgora] = useState(agoraServidor)
+  const total = useRef(Math.max(1, alvo - agoraServidor()))
+  const terminou = useRef(false)
+  useEffect(() => {
+    // confere 5 vezes por segundo, pelo relógio do servidor, para todos os celulares virarem juntos
+    const t = setInterval(() => setAgora(agoraServidor()), 200)
+    return () => clearInterval(t)
+  }, [])
+  const falta = alvo - agora
+  useEffect(() => {
+    if (falta <= 0 && !terminou.current) {
+      terminou.current = true
+      aoTerminar()
+    }
+  }, [falta, aoTerminar])
   return (
     <div className="flex min-h-full flex-col items-center justify-center text-center animate-fade-up">
       <p className="text-2xl font-extrabold text-emerald-700">Você está participando!</p>
-      <Relogio valor={esperando ? <Loader2 size={64} className="animate-spin" /> : segundos} fracao={fracao} legenda="o vídeo já vai começar" cor="emerald" />
-      <p className="mt-6 flex items-center gap-2 text-lg text-slate-700">
+      <Relogio
+        valor={esperando ? <Loader2 size={64} className="animate-spin" /> : Math.max(0, Math.ceil(falta / 1000))}
+        fracao={Math.max(0, falta) / total.current}
+        legenda="segundos para o vídeo começar"
+        cor="emerald"
+      />
+      <p className="mt-6 text-lg text-slate-700">Todos os participantes começam juntos.</p>
+      <p className="mt-2 flex items-center gap-2 text-lg text-slate-700">
         <Volume2 size={24} className="text-marca-700" /> Deixe o som do celular ligado
       </p>
     </div>
@@ -392,7 +423,7 @@ function Resultado({ rodada, resultado, aoSair }) {
 
       {proximaRodada && proximaRodada.id !== rodada.id && (
         <p className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-center text-xl text-slate-800">
-          Aguarde a próxima pergunta, <b>{proximaFalada(proximaRodada)}</b>.
+          <TextoProxima rodada={proximaRodada} />
         </p>
       )}
 
