@@ -127,6 +127,7 @@ function Painel() {
           <button onClick={sair} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">
             <LogOut size={17} /> Sair
           </button>
+          <p className="px-3 text-[11px] text-slate-400">Versão {__VERSAO__}</p>
         </div>
       </aside>
 
@@ -166,6 +167,7 @@ function Painel() {
           </div>
         </div>
         {erroConfig && <p className="-mt-4 mb-4 text-sm text-red-600">{erroConfig}</p>}
+        <p className="-mt-6 mb-4 text-[11px] text-slate-400 lg:hidden">Versão {__VERSAO__}</p>
 
         <div className="animate-fade-up" key={aba}>
           {aba === 'aovivo' && <AoVivo />}

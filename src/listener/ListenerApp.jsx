@@ -463,6 +463,7 @@ function Ajuda({ voltar }) {
           </button>
         </form>
       )}
+      <p className="pt-4 text-center text-sm text-slate-400">Versão {__VERSAO__}</p>
     </>
   )
 }
