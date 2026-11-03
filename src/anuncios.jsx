@@ -28,20 +28,13 @@ export const ehArquivoVideo = (url) => /^https?:\/\//.test(url ?? '') && !youtub
 
 /* ---------- vídeo em arquivo (MP4) ---------- */
 
-// Os celulares só deixam um vídeo tocar com som se ele tiver sido "tocado" num toque da pessoa.
+// Os celulares só deixam um vídeo tocar com som se ele tiver sido "tocado" logo depois de um toque da pessoa.
 // Os vídeos de anúncio já carregados se registram aqui, e os botões "Vou participar" e
 // "Confira sua resposta" chamam liberarVideos() no próprio toque: cada vídeo dá um play/pause
-// instantâneo e fica liberado para começar com som depois, na hora certa.
-const videosParaLiberar = new Set()
+// instantâneo (sem volume) e fica liberado para começar com som depois, quando o relógio zerar.
+const liberadores = new Set()
 export function liberarVideos() {
-  for (const v of videosParaLiberar) {
-    if (v.dataset.liberado) continue
-    v.muted = false
-    const p = v.play()
-    v.pause()
-    p?.catch(() => {})
-    v.dataset.liberado = '1'
-  }
+  for (const liberar of liberadores) liberar()
 }
 
 function VideoArquivo({ url, vertical, comSom = false, tocar = true, aoTerminar }) {
@@ -53,8 +46,16 @@ function VideoArquivo({ url, vertical, comSom = false, tocar = true, aoTerminar 
   useEffect(() => {
     const v = video.current
     if (!comSom || !v) return
-    videosParaLiberar.add(v)
-    return () => videosParaLiberar.delete(v)
+    const liberar = () => {
+      if (v.dataset.liberado) return
+      v.muted = false
+      const p = v.play()
+      v.pause()
+      p?.catch(() => {})
+      v.dataset.liberado = '1'
+    }
+    liberadores.add(liberar)
+    return () => liberadores.delete(liberar)
   }, [comSom])
 
   useEffect(() => {
@@ -126,7 +127,9 @@ function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar 
   const quadro = useRef(null)
   const [pronto, setPronto] = useState(false)
   const [mostrarBotao, setMostrarBotao] = useState(!comSom)
-  const player = useRef({ estado: -1, mudo: !comSom, mandouTocar: false })
+  const player = useRef({ estado: -1, mudo: !comSom, mandouTocar: false, liberando: false, liberado: false })
+  const tocarAgora = useRef(tocar)
+  tocarAgora.current = tocar
   const fim = useRef(aoTerminar)
   fim.current = aoTerminar
 
@@ -143,6 +146,7 @@ function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar 
         return
       }
       if (!d?.event) return
+      if (!player.current.pronto && player.current.querLiberar) setTimeout(player.current.querLiberar, 0)
       player.current.pronto = true
       setPronto(true)
       const info = d.info
@@ -150,6 +154,8 @@ function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar 
       if (typeof estado === 'number') player.current.estado = estado
       if (typeof info?.muted === 'boolean') player.current.mudo = info.muted
       if (estado === 0) fim.current?.()
+      // destravando o som no toque: assim que começou, pausa e volta ao início (se ainda não é a hora dele)
+      if (player.current.liberando && estado === 1) terminarLiberacao()
       if (player.current.mandouTocar && player.current.estado === 1) setMostrarBotao(player.current.mudo)
     }
     window.addEventListener('message', aoReceber)
@@ -162,6 +168,35 @@ function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar 
       clearInterval(chamar)
     }
   }, [])
+
+  function terminarLiberacao() {
+    if (!player.current.liberando) return
+    player.current.liberando = false
+    player.current.liberado = true
+    if (!tocarAgora.current) {
+      enviar('pauseVideo')
+      enviar('seekTo', [0, true])
+    }
+    enviar('setVolume', [100])
+  }
+
+  // Registra o destravamento do som, chamado no toque em "Vou participar" / "Confira sua resposta"
+  useEffect(() => {
+    if (!comSom) return
+    const liberar = () => {
+      if (player.current.liberado || tocarAgora.current) return
+      // tocou antes de o player terminar de carregar: destrava assim que ele ficar pronto
+      if (!player.current.pronto) return (player.current.querLiberar = liberar)
+      player.current.liberando = true
+      enviar('setVolume', [0])
+      enviar('unMute')
+      enviar('playVideo')
+      setTimeout(terminarLiberacao, 1500)
+    }
+    liberadores.add(liberar)
+    return () => liberadores.delete(liberar)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comSom])
 
   // Hora de tocar: com o player pronto, começa com som. Se em 2,5 s não estiver tocando, o celular
   // bloqueou o som → toca sem som e mostra o botão.
