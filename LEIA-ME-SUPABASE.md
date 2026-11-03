@@ -135,7 +135,12 @@ chaves de envio e guarda no banco, num lugar que só o servidor lê.
 ## Anúncios dos patrocinadores
 Em **Painel Admin → Patrocinadores**, cada anunciante tem um tipo de anúncio:
 - **Simples:** logotipo (ou ícone), frase e descrição.
-- **Vídeo do YouTube:** cole o link do vídeo. No YouTube, deixe a visibilidade como **Não listado** e marque
+- **Vídeo — arquivo MP4 (recomendado):** envie o arquivo (até 20 MB). O app toca o vídeo ele mesmo, e o toque do
+  ouvinte em "Vou participar" / "Confira sua resposta" libera o som em qualquer celular, inclusive iPhone. O tempo na
+  tela é ajustado sozinho para a duração do vídeo. Prefira vídeos curtos em 720p: cada ouvinte baixa o vídeo, e isso
+  conta no limite de transferência do plano do Supabase (5 GB/mês no plano gratuito).
+- **Vídeo — link do YouTube:** cole o link do vídeo. Em alguns celulares (principalmente iPhone) o YouTube não deixa
+  começar com som; aí aparece o botão "Ouvir com som". No YouTube, deixe a visibilidade como **Não listado** e marque
   **Permitir incorporação**. O vídeo começa sem som (regra dos celulares) e o ouvinte toca em "Ouvir com som".
   Escolha horizontal ou vertical (Shorts) e ajuste o **tempo na tela** para a duração do vídeo (até 120 s).
 - **Montado pelo app:** logotipo em PNG, cores, título e descrição da promoção, preço (e preço antigo riscado),

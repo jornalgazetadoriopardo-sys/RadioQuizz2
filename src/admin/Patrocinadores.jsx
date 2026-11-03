@@ -4,12 +4,12 @@ import { mensagemDeErro, supabase } from '../supabase.js'
 import { CORES, Card, ICONES_PATROCINADOR, Icone, Vazio } from '../ui.jsx'
 import { Carregando } from '../auth.jsx'
 import { DURACOES } from '../config.js'
-import { LAYOUTS, PecaAnuncio, ehShorts, youtubeId } from '../anuncios.jsx'
-import { Botao, Campo, Texto, enviarImagem, inputCls, useTabela } from './comum.jsx'
+import { LAYOUTS, PecaAnuncio, ehArquivoVideo, ehShorts, youtubeId } from '../anuncios.jsx'
+import { Botao, Campo, Texto, enviarImagem, enviarVideo, inputCls, useTabela } from './comum.jsx'
 
 const TIPOS = [
   { id: 'simples', nome: 'Simples', descricao: 'Logo ou ícone com uma frase. Rápido de cadastrar.', icone: Megaphone, cor: 'bg-ouro-100 text-ouro-700' },
-  { id: 'video', nome: 'Vídeo do YouTube', descricao: 'Cole o link de um vídeo (pode ser "Não listado").', icone: Clapperboard, cor: 'bg-marca-100 text-marca-700' },
+  { id: 'video', nome: 'Vídeo', descricao: 'Envie o arquivo MP4 (som garantido) ou cole um link do YouTube.', icone: Clapperboard, cor: 'bg-marca-100 text-marca-700' },
   { id: 'automatico', nome: 'Montado pelo app', descricao: 'Logo, contatos, cores e promoção num layout pronto.', icone: Sparkles, cor: 'bg-violet-100 text-violet-700' },
 ]
 
@@ -50,7 +50,7 @@ const COLUNAS = Object.keys(novoPatrocinador())
 function validar(p) {
   if (!p.nome.trim()) return 'Informe o nome do anunciante.'
   if (p.tipo === 'simples' && !p.slogan.trim()) return 'Escreva a frase do anúncio.'
-  if (p.tipo === 'video' && !youtubeId(p.video_url)) return 'Cole um link válido do YouTube.'
+  if (p.tipo === 'video' && !youtubeId(p.video_url) && !ehArquivoVideo(p.video_url)) return 'Envie o arquivo do vídeo ou cole um link válido do YouTube.'
   if (p.tipo === 'automatico' && !p.promo_titulo.trim() && !p.logo_url) return 'Coloque pelo menos o logotipo ou o título da promoção.'
   return ''
 }
@@ -338,49 +338,114 @@ function ConteudoSimples({ p, set }) {
 
 function ConteudoVideo({ p, set }) {
   const id = youtubeId(p.video_url)
+  const [fonte, setFonte] = useState(id ? 'youtube' : 'arquivo')
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState('')
+
+  const escolherArquivo = async (arquivo) => {
+    if (!arquivo) return
+    setErro('')
+    setEnviando(true)
+    try {
+      // lê duração e formato do próprio arquivo
+      const meta = await new Promise((ok) => {
+        const v = document.createElement('video')
+        v.preload = 'metadata'
+        v.onloadedmetadata = () => ok({ duracao: v.duration, vertical: v.videoHeight > v.videoWidth })
+        v.onerror = () => ok(null)
+        v.src = URL.createObjectURL(arquivo)
+      })
+      const url = await enviarVideo(arquivo, 'videos')
+      set('video_url', url)
+      if (meta) {
+        set('video_vertical', meta.vertical)
+        if (Number.isFinite(meta.duracao)) set('duracao_segundos', Math.min(120, Math.max(5, Math.ceil(meta.duracao))))
+      }
+    } catch (e) {
+      setErro(e.message)
+    }
+    setEnviando(false)
+  }
+
   return (
-    <Etapa numero={3} titulo="Vídeo do YouTube">
+    <Etapa numero={3} titulo="Vídeo">
       <div className="space-y-4">
-        <Campo rotulo="Link do vídeo">
-          <Texto
-            valor={p.video_url}
-            onChange={(v) => {
-              set('video_url', v.trim())
-              if (ehShorts(v)) set('video_vertical', true)
-            }}
-            placeholder="https://youtu.be/... ou https://www.youtube.com/watch?v=..."
-          />
-        </Campo>
-        {p.video_url && !id && <p className="text-sm font-semibold text-marca-600">Não reconheci esse link. Copie o endereço pelo botão "Compartilhar" do YouTube.</p>}
-        {id && (
-          <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-            <img src={`https://i.ytimg.com/vi/${id}/mqdefault.jpg`} alt="" className="h-14 w-24 rounded-lg object-cover" />
-            <span>Vídeo reconhecido. Veja a prévia ao lado.</span>
-          </div>
-        )}
-        <div className="flex flex-wrap gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {[
-            { v: false, nome: 'Horizontal (16:9)' },
-            { v: true, nome: 'Vertical (Shorts / 9:16)' },
+            { id: 'arquivo', nome: 'Arquivo de vídeo (MP4)', texto: 'Recomendado: o som sai garantido em todos os celulares.' },
+            { id: 'youtube', nome: 'Link do YouTube', texto: 'Em alguns celulares (principalmente iPhone) pode começar sem som.' },
           ].map((o) => (
-            <label key={o.nome} className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ring-2 ${p.video_vertical === o.v ? 'ring-marca-500' : 'ring-slate-200'}`}>
-              <input type="radio" name="formato" checked={p.video_vertical === o.v} onChange={() => set('video_vertical', o.v)} className="accent-marca-600" />
-              {o.nome}
-            </label>
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => setFonte(o.id)}
+              className={`rounded-2xl p-4 text-left ring-2 transition ${fonte === o.id ? 'bg-marca-50 ring-marca-500' : 'bg-white ring-slate-200 hover:ring-slate-300'}`}
+            >
+              <span className="block text-sm font-semibold">{o.nome}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-500">{o.texto}</span>
+            </button>
           ))}
         </div>
-        <div className="rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-600 ring-1 ring-slate-200">
-          <p className="font-semibold text-slate-800">No YouTube, antes de colar o link:</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4">
-            <li>
-              Em <b>Visibilidade</b>, escolha <b>Não listado</b> (o vídeo não aparece nas buscas, mas toca no quiz).
-            </li>
-            <li>
-              Em <b>Mais opções</b>, deixe marcado <b>Permitir incorporação</b>.
-            </li>
-            <li>O vídeo começa sem som (regra dos celulares); o ouvinte toca em "Ouvir com som".</li>
-          </ul>
-        </div>
+        {fonte === 'arquivo' && (
+          <div className="space-y-3">
+            <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-6 text-sm font-semibold text-slate-700 hover:border-marca-400 ${enviando ? 'opacity-60' : ''}`}>
+              {enviando ? <Loader2 size={18} className="animate-spin" /> : <Clapperboard size={18} />}
+              {enviando ? 'Enviando o vídeo…' : ehArquivoVideo(p.video_url) ? 'Trocar o vídeo' : 'Escolher o arquivo do vídeo'}
+              <input type="file" accept="video/mp4,video/quicktime" className="hidden" disabled={enviando} onChange={(e) => escolherArquivo(e.target.files?.[0])} />
+            </label>
+            {ehArquivoVideo(p.video_url) && !enviando && (
+              <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">Vídeo enviado. O tempo na tela foi ajustado para a duração dele. Veja a prévia ao lado.</p>
+            )}
+            {erro && <p className="text-sm font-semibold text-red-600">{erro}</p>}
+            <p className="text-xs leading-relaxed text-slate-500">
+              MP4 de até 20 MB. Para carregar rápido no 4G e gastar pouco da internet do ouvinte, prefira vídeos curtos (15 a 30 s) em 720p ou menos.
+            </p>
+          </div>
+        )}
+        {fonte === 'youtube' && (
+          <>
+          <Campo rotulo="Link do vídeo">
+            <Texto
+              valor={p.video_url}
+              onChange={(v) => {
+                set('video_url', v.trim())
+                if (ehShorts(v)) set('video_vertical', true)
+              }}
+              placeholder="https://youtu.be/... ou https://www.youtube.com/watch?v=..."
+            />
+          </Campo>
+          {p.video_url && !id && <p className="text-sm font-semibold text-marca-600">Não reconheci esse link. Copie o endereço pelo botão "Compartilhar" do YouTube.</p>}
+          {id && (
+            <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+              <img src={`https://i.ytimg.com/vi/${id}/mqdefault.jpg`} alt="" className="h-14 w-24 rounded-lg object-cover" />
+              <span>Vídeo reconhecido. Veja a prévia ao lado.</span>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3">
+            {[
+              { v: false, nome: 'Horizontal (16:9)' },
+              { v: true, nome: 'Vertical (Shorts / 9:16)' },
+            ].map((o) => (
+              <label key={o.nome} className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ring-2 ${p.video_vertical === o.v ? 'ring-marca-500' : 'ring-slate-200'}`}>
+                <input type="radio" name="formato" checked={p.video_vertical === o.v} onChange={() => set('video_vertical', o.v)} className="accent-marca-600" />
+                {o.nome}
+              </label>
+            ))}
+          </div>
+          <div className="rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-600 ring-1 ring-slate-200">
+            <p className="font-semibold text-slate-800">No YouTube, antes de colar o link:</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              <li>
+                Em <b>Visibilidade</b>, escolha <b>Não listado</b> (o vídeo não aparece nas buscas, mas toca no quiz).
+              </li>
+              <li>
+                Em <b>Mais opções</b>, deixe marcado <b>Permitir incorporação</b>.
+              </li>
+              <li>Se o celular bloquear o som do YouTube, aparece o botão "Ouvir com som". Para som garantido, use o arquivo MP4.</li>
+            </ul>
+          </div>
+          </>
+        )}
       </div>
     </Etapa>
   )

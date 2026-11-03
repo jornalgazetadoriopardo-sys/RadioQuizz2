@@ -23,6 +23,94 @@ export function youtubeId(url) {
   return m ? m[1] : null
 }
 export const ehShorts = (url) => /youtube\.com\/shorts\//.test(url ?? '')
+/** Vídeo enviado como arquivo (MP4) para o próprio app, e não link do YouTube. */
+export const ehArquivoVideo = (url) => /^https?:\/\//.test(url ?? '') && !youtubeId(url)
+
+/* ---------- vídeo em arquivo (MP4) ---------- */
+
+// Os celulares só deixam um vídeo tocar com som se ele tiver sido "tocado" num toque da pessoa.
+// Os vídeos de anúncio já carregados se registram aqui, e os botões "Vou participar" e
+// "Confira sua resposta" chamam liberarVideos() no próprio toque: cada vídeo dá um play/pause
+// instantâneo e fica liberado para começar com som depois, na hora certa.
+const videosParaLiberar = new Set()
+export function liberarVideos() {
+  for (const v of videosParaLiberar) {
+    if (v.dataset.liberado) continue
+    v.muted = false
+    const p = v.play()
+    v.pause()
+    p?.catch(() => {})
+    v.dataset.liberado = '1'
+  }
+}
+
+function VideoArquivo({ url, vertical, comSom = false, tocar = true, aoTerminar }) {
+  const video = useRef(null)
+  const [semSom, setSemSom] = useState(!comSom)
+  const fim = useRef(aoTerminar)
+  fim.current = aoTerminar
+
+  useEffect(() => {
+    const v = video.current
+    if (!comSom || !v) return
+    videosParaLiberar.add(v)
+    return () => videosParaLiberar.delete(v)
+  }, [comSom])
+
+  useEffect(() => {
+    const v = video.current
+    if (!v) return
+    if (!tocar) {
+      if (!v.paused) v.pause()
+      return
+    }
+    if (!comSom) {
+      v.muted = true
+      v.play().catch(() => {})
+      return
+    }
+    v.currentTime = 0
+    v.muted = false
+    v.play().catch(() => {
+      // o celular bloqueou o som: toca sem som e mostra o botão
+      v.muted = true
+      setSemSom(true)
+      v.play().catch(() => {})
+    })
+  }, [tocar, comSom])
+
+  const ligarSom = () => {
+    const v = video.current
+    v.muted = false
+    v.play().catch(() => {})
+    setSemSom(false)
+  }
+
+  return (
+    <div className="relative">
+      <div className={`overflow-hidden rounded-2xl bg-black ${vertical ? 'mx-auto aspect-[9/16] max-h-[420px]' : 'aspect-video'}`}>
+        <video
+          ref={video}
+          src={url}
+          preload="auto"
+          playsInline
+          muted={!comSom}
+          loop={!aoTerminar}
+          onEnded={() => fim.current?.()}
+          className="h-full w-full object-contain"
+        />
+      </div>
+      {semSom && tocar && (
+        <button
+          onClick={ligarSom}
+          className="mx-auto mt-3 flex min-h-[56px] items-center gap-2 rounded-full bg-marca-800 px-7 text-xl font-bold text-white shadow-lg active:scale-[.98]"
+        >
+          <Volume2 size={24} /> Ouvir com som
+        </button>
+      )}
+    </div>
+  )
+}
 
 /**
  * Vídeo do patrocinador.
@@ -359,6 +447,8 @@ function AnuncioSimples({ p }) {
 /** A peça do anúncio, conforme o tipo cadastrado. */
 export function PecaAnuncio({ p, comSom = false, tocar = true, aoTerminarVideo }) {
   if (!p) return <Aviso texto="Espaço publicitário disponível" />
+  if (p.tipo === 'video' && ehArquivoVideo(p.video_url))
+    return <VideoArquivo key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} />
   if (p.tipo === 'video') return <VideoYouTube key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} />
   if (p.tipo === 'automatico') {
     const L = LAYOUT_COMPONENTE[p.layout] ?? LayoutOferta

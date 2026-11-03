@@ -5,7 +5,7 @@ import { fmt, nomeRodada, useDados } from '../store.jsx'
 import { TextoProxima } from './TextoProxima.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { useContagem } from '../ui.jsx'
-import { PecaAnuncio } from '../anuncios.jsx'
+import { PecaAnuncio, liberarVideos } from '../anuncios.jsx'
 import { agoraServidor, instanteRodada, useRelogio } from '../relogio.js'
 
 // Fluxo de uma rodada:
@@ -62,6 +62,7 @@ export default function Rodada({ aoSair }) {
   // "Vou participar": guarda a vaga no servidor enquanto a contagem 3, 2, 1 corre
   // O relógio continua até o fim do tempo da rodada: todos começam o vídeo e a pergunta juntos
   const participar = async () => {
+    liberarVideos() // precisa ser no próprio toque, antes de qualquer espera
     const fim = fimDaEntrada(rodada)
     setInicioVideo(fim && fim - agoraServidor() > 1000 ? fim : new Date(agoraServidor().getTime() + SEGUNDOS_PREPARAR * 1000))
     setEtapa('preparar')
@@ -118,7 +119,14 @@ export default function Rodada({ aoSair }) {
           }}
         />
       )}
-      {etapa === 'enviada' && <Enviada aoConferir={() => setEtapa('anuncio2')} />}
+      {etapa === 'enviada' && (
+        <Enviada
+          aoConferir={() => {
+            liberarVideos()
+            setEtapa('anuncio2')
+          }}
+        />
+      )}
       {['pergunta', 'enviada', 'anuncio2'].includes(etapa) && (
         <Anuncio
           key="a2"

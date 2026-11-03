@@ -74,3 +74,14 @@ export async function enviarImagem(arquivo, pasta) {
   if (error) throw new Error(mensagemDeErro(error))
   return supabase.storage.from('patrocinadores').getPublicUrl(caminho).data.publicUrl
 }
+
+/** Envia o vídeo de um anúncio (MP4) e devolve o endereço público. */
+export async function enviarVideo(arquivo, pasta) {
+  if (!arquivo) return null
+  if (!/^video\/(mp4|quicktime)$/.test(arquivo.type)) throw new Error('Use um vídeo MP4 (ou MOV gravado no iPhone).')
+  if (arquivo.size > 20 * 1024 * 1024) throw new Error('O vídeo deve ter no máximo 20 MB. Exporte em 720p ou menor.')
+  const caminho = `${pasta}/${Date.now()}-${arquivo.name.replace(/[^\w.-]/g, '_')}`
+  const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { upsert: true, contentType: arquivo.type })
+  if (error) throw new Error(mensagemDeErro(error))
+  return supabase.storage.from('patrocinadores').getPublicUrl(caminho).data.publicUrl
+}
