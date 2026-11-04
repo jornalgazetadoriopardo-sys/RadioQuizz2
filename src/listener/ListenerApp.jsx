@@ -141,7 +141,7 @@ function Inicio({ irPara, eu }) {
             </p>
           </div>
           <p className="mt-3 text-lg leading-relaxed text-slate-700">
-            Ouça a <b>{RADIO.frequencia} FM</b>. Quando o locutor anunciar, a pergunta aparece aqui sozinha.
+            Fique ligado na <b>{RADIO.frequencia} FM</b>. Quando a pergunta entrar no ar, ela aparece aqui sozinha.
           </p>
         </div>
       )}
@@ -151,7 +151,7 @@ function Inicio({ irPara, eu }) {
       {/* Menu com botões grandes */}
       <div className="grid grid-cols-2 gap-3">
         <BotaoMenu icone={Trophy} cor="text-ouro-600 bg-ouro-100" titulo="Ranking" detalhe={posicaoTexto(eu)} onClick={() => irPara('ranking')} />
-        <BotaoMenu icone={Gift} cor="text-marca-700 bg-marca-100" titulo="Prêmios" detalhe="Da semana" onClick={() => irPara('premios')} />
+        <BotaoMenu icone={Gift} cor="text-marca-700 bg-marca-100" titulo="Prêmios" detalhe="Para os primeiros" onClick={() => irPara('premios')} />
         <BotaoMenu icone={History} cor="text-sky-700 bg-sky-100" titulo="Meu histórico" detalhe="Minhas respostas" onClick={() => irPara('historico')} />
         <BotaoMenu icone={CalendarClock} cor="text-violet-700 bg-violet-100" titulo="Horários" detalhe="Perguntas de hoje" onClick={() => irPara('grade')} />
       </div>
@@ -324,7 +324,7 @@ function Ranking({ ranking, voltar }) {
   const medalha = { 1: '🥇', 2: '🥈', 3: '🥉' }
   return (
     <>
-      <Titulo voltar={voltar}>Ranking da semana</Titulo>
+      <Titulo voltar={voltar}>Ranking</Titulo>
       {eu && (
         <div className="mb-4 rounded-2xl bg-marca-600 p-4 text-white">
           <p className="text-lg">Sua posição</p>
@@ -346,9 +346,8 @@ function Ranking({ ranking, voltar }) {
           ))}
         </Caixa>
       ) : (
-        <Caixa className="p-6 text-center text-xl text-slate-700">Ninguém pontuou nesta semana ainda. Seja o primeiro!</Caixa>
+        <Caixa className="p-6 text-center text-xl text-slate-700">Ninguém pontuou ainda. Seja o primeiro!</Caixa>
       )}
-      <p className="mt-4 text-center text-base text-slate-600">O ranking recomeça toda segunda-feira.</p>
     </>
   )
 }
@@ -387,7 +386,7 @@ function Premios({ voltar }) {
   const { premios } = useDados()
   return (
     <>
-      <Titulo voltar={voltar}>Prêmios da semana</Titulo>
+      <Titulo voltar={voltar}>Prêmios</Titulo>
       <div className="space-y-3">
         {premios.map((p) => (
           <Caixa key={p.id} className="flex items-center gap-4 p-4">
@@ -400,7 +399,7 @@ function Premios({ voltar }) {
         ))}
       </div>
       <p className="mt-4 text-center text-base leading-relaxed text-slate-600">
-        Os prêmios vão para os primeiros colocados do ranking da semana. Regulamento disponível na rádio.
+        Os prêmios vão para os primeiros colocados do ranking. Regulamento disponível na rádio.
       </p>
     </>
   )
@@ -433,7 +432,7 @@ function Ajuda({ voltar }) {
       <Titulo voltar={voltar}>Ajuda</Titulo>
       <Caixa className="mb-4 space-y-3 p-4 text-lg leading-relaxed text-slate-800">
         <p>
-          <b>Como participar:</b> ouça a {RADIO.frequencia} FM. Quando o locutor anunciar, toque em <b>Responder agora</b>.
+          <b>Como participar:</b> fique ligado na {RADIO.frequencia} FM. Quando a pergunta entrar no ar, toque em <b>Vou participar</b>.
         </p>
         <p>
           Depois de um anúncio rápido, a pergunta aparece. <b>Toque na resposta certa</b> antes do tempo acabar: ela é enviada na hora.

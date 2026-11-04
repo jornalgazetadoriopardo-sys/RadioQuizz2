@@ -139,7 +139,7 @@ export default function Rodada({ aoSair }) {
           cor="emerald"
         />
       )}
-      {etapa === 'resultado' && <Resultado rodada={rodada} resultado={resultado} aoSair={aoSair} />}
+      {etapa === 'resultado' && <Resultado rodada={rodada} resultado={resultado} imagem={pergunta?.imagem_url} aoSair={aoSair} />}
     </div>
   )
 }
@@ -368,6 +368,7 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
       </div>
 
       <p className="mt-5 text-lg font-bold text-marca-700">Vale {fmt(rodada.pontos)} pontos</p>
+      {pergunta.imagem_url && <ImagemPergunta url={pergunta.imagem_url} />}
       <h2 className="mt-1 text-2xl font-extrabold leading-snug text-slate-900">{pergunta.pergunta}</h2>
 
       <p className="mt-5 text-lg text-slate-700">{enviando ? 'Enviando sua resposta…' : 'Toque na resposta certa:'}</p>
@@ -400,7 +401,32 @@ function Pergunta({ rodada, pergunta, aoResponder }) {
 // Todas as alternativas no azul da Difusora, com a letra em dourado
 const COR_ALTERNATIVA = { botao: 'from-marca-600 to-marca-800 border-marca-900', letra: 'bg-ouro-400 text-marca-900', texto: 'text-white' }
 
-function Resultado({ rodada, resultado, aoSair }) {
+/** Imagem da pergunta. Tocar abre em tela cheia (para ver os detalhes); tocar de novo fecha. */
+function ImagemPergunta({ url }) {
+  const [carregou, setCarregou] = useState(false)
+  const [cheia, setCheia] = useState(false)
+  return (
+    <>
+      <button type="button" onClick={() => setCheia(true)} className="relative mt-3 block w-full overflow-hidden rounded-2xl bg-slate-200">
+        <img src={url} alt="Imagem da pergunta" onLoad={() => setCarregou(true)} className="mx-auto max-h-[28vh] w-full object-contain" />
+        {!carregou && (
+          <span className="absolute inset-0 grid min-h-[160px] place-items-center">
+            <Loader2 className="animate-spin text-marca-600" size={36} />
+          </span>
+        )}
+        {carregou && <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-3 py-1 text-sm font-semibold text-white">Toque para ampliar</span>}
+      </button>
+      {cheia && (
+        <button type="button" onClick={() => setCheia(false)} className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/90 p-4">
+          <img src={url} alt="Imagem da pergunta" className="max-h-[80vh] w-full object-contain" />
+          <span className="rounded-full bg-white px-6 py-3 text-lg font-bold text-slate-900">Voltar para a pergunta</span>
+        </button>
+      )}
+    </>
+  )
+}
+
+function Resultado({ rodada, resultado, imagem, aoSair }) {
   const { proximaRodada } = useDados()
   const acertou = resultado?.acertou
   const titulo = acertou ? 'Você acertou!' : resultado?.tempo_esgotado ? 'O tempo acabou' : 'Não foi desta vez'
@@ -424,6 +450,7 @@ function Resultado({ rodada, resultado, aoSair }) {
       </div>
 
       <div className="mt-4 rounded-3xl bg-white p-5 ring-2 ring-slate-200">
+        {imagem && <img src={imagem} alt="" className="mb-3 max-h-40 w-full rounded-2xl bg-slate-100 object-contain" />}
         <p className="text-lg text-slate-700">A resposta certa era:</p>
         <p className="mt-1 text-2xl font-extrabold leading-snug text-emerald-700">{resultado?.resposta_correta}</p>
         {resultado?.explicacao && <p className="mt-3 text-lg leading-relaxed text-slate-800">{resultado.explicacao}</p>}

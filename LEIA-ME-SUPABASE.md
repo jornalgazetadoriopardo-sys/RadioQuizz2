@@ -31,6 +31,7 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
   entrou a tempo vê o anúncio e depois responde normalmente, mesmo que a rodada feche durante o anúncio.
 - `012_todos_juntos.sql` — depois do "Vou participar", o relógio continua até o fim do tempo da rodada e todos
   começam o anúncio e a pergunta juntos. Precisa do 010 e do 011.
+- `013_imagem_pergunta.sql` — imagem opcional em cada pergunta (ex.: "Quem é este cantor?"). Precisa do 012.
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:

@@ -1,7 +1,7 @@
 {
   "name": "Pergunta da Hora",
   "short_name": "Pergunta da Hora",
-  "description": "Quiz ao vivo da rádio: responda as perguntas do locutor e concorra a prêmios.",
+  "description": "Quiz ao vivo da rádio: responda as perguntas e concorra a prêmios.",
   "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",

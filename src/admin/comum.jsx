@@ -65,6 +65,30 @@ export function Botao({ variante = 'primario', className = '', children, ...prop
 
 
 /** Envia uma imagem para o armazenamento dos patrocinadores e devolve o endereço público. */
+/** Diminui uma foto grande (máx. 1280 px, JPEG) para carregar rápido no celular. PNG/SVG pequenos ficam como estão. */
+export async function reduzirFoto(arquivo, lado = 1280) {
+  if (!/^image\/(jpeg|png|webp)$/.test(arquivo.type)) return arquivo
+  const img = await new Promise((ok, falha) => {
+    const i = new Image()
+    i.onload = () => ok(i)
+    i.onerror = falha
+    i.src = URL.createObjectURL(arquivo)
+  }).catch(() => null)
+  if (!img) return arquivo
+  const escala = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight))
+  if (escala === 1 && arquivo.size < 400 * 1024) return arquivo
+  const tela = document.createElement('canvas')
+  tela.width = Math.round(img.naturalWidth * escala)
+  tela.height = Math.round(img.naturalHeight * escala)
+  const ctx = tela.getContext('2d')
+  ctx.fillStyle = '#ffffff' // PNG transparente vira fundo branco
+  ctx.fillRect(0, 0, tela.width, tela.height)
+  ctx.drawImage(img, 0, 0, tela.width, tela.height)
+  const blob = await new Promise((ok) => tela.toBlob(ok, 'image/jpeg', 0.82))
+  if (!blob) return arquivo
+  return new File([blob], arquivo.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' })
+}
+
 export async function enviarImagem(arquivo, pasta) {
   if (!arquivo) return null
   if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(arquivo.type)) throw new Error('Use uma imagem PNG, JPG, WEBP ou SVG.')
