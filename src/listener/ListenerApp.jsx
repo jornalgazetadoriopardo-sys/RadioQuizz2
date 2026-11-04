@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, BellOff, Hand, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Radio, Trophy, XCircle } from 'lucide-react'
+import { Bell, BellOff, Hand, X, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
 import { Carregando, LinkAdmin, TelaCadastro, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
 import { fmt, fmtHorario, hojeSP, nomeRodada, useDados, useRanking } from '../store.jsx'
@@ -10,6 +10,7 @@ import { usePush } from '../push.js'
 import Rodada from './Rodada.jsx'
 import { TextoProxima } from './TextoProxima.jsx'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora } from '../historico.jsx'
+import { BannerPatrocinadores } from '../anuncios.jsx'
 
 // Telas pensadas para um público mais velho: letras grandes, alto contraste,
 // uma ação principal por tela e botões com texto (não só ícone).
@@ -150,7 +151,7 @@ function Inicio({ irPara, eu }) {
         </div>
       )}
 
-      <AvisosCelular />
+      <PatrocinioEAvisos />
 
       {/* Menu com botões grandes */}
       <div className="grid grid-cols-2 gap-3">
@@ -182,27 +183,41 @@ const lerAgoraNao = () => {
   }
 }
 
-/** Convite para ligar as notificações (aviso quando a pergunta entra no ar). */
+/** Patrocinadores e avisos no mesmo bloco: banner rotativo (3/4) e, embaixo, a faixa curta dos avisos (1/4). */
+function PatrocinioEAvisos() {
+  const { patrocinadores } = useDados()
+  const avisos = <AvisosCelular />
+  if (!patrocinadores.length) return <div className="overflow-hidden rounded-3xl ring-2 ring-slate-200">{avisos}</div>
+  return (
+    <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-2 ring-slate-200">
+      <BannerPatrocinadores patrocinadores={patrocinadores} className="h-44" />
+      {avisos}
+    </div>
+  )
+}
+
+/** Faixa curta para ligar as notificações (aviso quando a pergunta entra no ar). */
 function AvisosCelular() {
   const { estado, erro, ativar, desativar } = usePush()
   const [agoraNao, setAgoraNao] = useState(lerAgoraNao)
+  const [ajuda, setAjuda] = useState(false)
   const esconder = () => {
     setAgoraNao(true)
     try {
       localStorage.setItem(CHAVE_AGORA_NAO, '1')
     } catch {
-      // sem armazenamento, o cartão volta na próxima visita
+      // sem armazenamento, a faixa volta na próxima visita
     }
   }
 
-  if (estado === 'carregando') return null
+  if (estado === 'carregando' || estado === 'nao-suportado') return null
   if (estado === 'ativo')
     return (
-      <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 ring-2 ring-emerald-200">
-        <span className="flex items-center gap-2 text-lg font-semibold text-emerald-800">
-          <Bell size={22} /> Avisos ligados neste celular
+      <div className="flex min-h-[48px] items-center justify-between gap-2 bg-emerald-50 px-4">
+        <span className="flex items-center gap-2 text-base font-semibold text-emerald-800">
+          <Bell size={20} /> Avisos ligados
         </span>
-        <button onClick={desativar} className="min-h-[44px] px-2 text-base font-semibold text-slate-600 underline">
+        <button onClick={desativar} className="min-h-[44px] px-1 text-sm font-semibold text-slate-500 underline">
           Desligar
         </button>
       </div>
@@ -210,48 +225,41 @@ function AvisosCelular() {
   if (agoraNao) return null
 
   return (
-    <div className="rounded-3xl bg-ouro-50 p-5 ring-2 ring-ouro-200">
-      <p className="flex items-center gap-2 text-xl font-extrabold text-slate-900">
-        <Bell size={26} className="text-ouro-600" /> Quer ser avisado?
-      </p>
-      <p className="mt-2 text-lg leading-relaxed text-slate-800">O celular toca um aviso na hora em que a pergunta entrar no ar.</p>
-
-      {estado === 'inativo' && (
-        <>
-          <button onClick={ativar} className="mt-4 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-2xl bg-marca-700 text-xl font-extrabold text-white active:scale-[.98]">
-            <Bell size={24} /> QUERO SER AVISADO
+    <div className="bg-ouro-50 px-4 py-2.5">
+      <div className="flex items-center gap-3">
+        <Bell size={22} className="shrink-0 text-ouro-600" />
+        <p className="min-w-0 flex-1 text-[15px] font-semibold leading-tight text-slate-900">Receber aviso quando a pergunta entrar no ar?</p>
+        {estado === 'inativo' ? (
+          <button onClick={ativar} className="min-h-[44px] shrink-0 rounded-xl bg-marca-700 px-4 text-base font-extrabold text-white active:scale-[.98]">
+            Quero
           </button>
-          <p className="mt-2 text-base text-slate-700">
-            Depois, toque em <b>Permitir</b> na mensagem que vai aparecer.
-          </p>
-        </>
-      )}
-      {estado === 'ios-instalar' && (
-        <ol className="mt-3 list-decimal space-y-1 pl-6 text-lg leading-relaxed text-slate-800">
+        ) : (
+          <button onClick={() => setAjuda(!ajuda)} className="min-h-[44px] shrink-0 rounded-xl bg-white px-3 text-base font-bold text-marca-800 ring-2 ring-marca-200">
+            Como?
+          </button>
+        )}
+        <button onClick={esconder} aria-label="Agora não" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-white">
+          <X size={18} />
+        </button>
+      </div>
+      {ajuda && estado === 'ios-instalar' && (
+        <ol className="mt-2 list-decimal space-y-0.5 pl-6 text-base leading-snug text-slate-800">
           <li>
-            Toque no botão <b>Compartilhar</b> do Safari (o quadrado com a seta para cima).
+            Toque em <b>Compartilhar</b> no Safari (o quadrado com a seta para cima).
           </li>
           <li>
             Escolha <b>Adicionar à Tela de Início</b>.
           </li>
-          <li>Abra o quiz pelo ícone novo e toque em "Quero ser avisado".</li>
-          <li className="list-none text-base text-slate-600">Funciona no iPhone com iOS 16.4 ou mais novo.</li>
+          <li>Abra o quiz pelo ícone novo e toque em "Quero". (iOS 16.4 ou mais novo)</li>
         </ol>
       )}
-      {estado === 'bloqueado' && (
-        <p className="mt-3 flex gap-2 text-lg leading-relaxed text-slate-800">
-          <BellOff size={22} className="mt-1 shrink-0 text-marca-600" />
-          Os avisos estão bloqueados neste celular. Para liberar, toque no cadeado ao lado do endereço do site, depois em
-          Notificações e escolha Permitir.
+      {ajuda && estado === 'bloqueado' && (
+        <p className="mt-2 flex gap-2 text-base leading-snug text-slate-800">
+          <BellOff size={20} className="mt-0.5 shrink-0 text-marca-600" />
+          Os avisos estão bloqueados. Toque no cadeado ao lado do endereço do site, depois em Notificações e escolha Permitir.
         </p>
       )}
-      {estado === 'nao-suportado' && (
-        <p className="mt-3 text-lg leading-relaxed text-slate-800">Este navegador não recebe avisos. Abra o link no Chrome (Android) ou no Safari (iPhone).</p>
-      )}
-      {erro && <p className="mt-2 text-base font-semibold text-red-700">{erro}</p>}
-      <button onClick={esconder} className="mt-3 min-h-[44px] w-full text-center text-base font-semibold text-slate-600 underline">
-        Agora não
-      </button>
+      {erro && <p className="mt-1 text-sm font-semibold text-red-700">{erro}</p>}
     </div>
   )
 }
