@@ -94,7 +94,8 @@ export async function enviarImagem(arquivo, pasta) {
   if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(arquivo.type)) throw new Error('Use uma imagem PNG, JPG, WEBP ou SVG.')
   if (arquivo.size > 3 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 3 MB.')
   const caminho = `${pasta}/${Date.now()}-${arquivo.name.replace(/[^\w.-]/g, '_')}`
-  const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { upsert: true })
+  // Sem "upsert": cada arquivo tem nome único, e substituir exigiria permissão de leitura que o banco não dá
+  const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { contentType: arquivo.type })
   if (error) throw new Error(mensagemDeErro(error))
   return supabase.storage.from('patrocinadores').getPublicUrl(caminho).data.publicUrl
 }
@@ -105,7 +106,7 @@ export async function enviarVideo(arquivo, pasta) {
   if (!/^video\/(mp4|quicktime)$/.test(arquivo.type)) throw new Error('Use um vídeo MP4 (ou MOV gravado no iPhone).')
   if (arquivo.size > 20 * 1024 * 1024) throw new Error('O vídeo deve ter no máximo 20 MB. Exporte em 720p ou menor.')
   const caminho = `${pasta}/${Date.now()}-${arquivo.name.replace(/[^\w.-]/g, '_')}`
-  const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { upsert: true, contentType: arquivo.type })
+  const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { contentType: arquivo.type })
   if (error) throw new Error(mensagemDeErro(error))
   return supabase.storage.from('patrocinadores').getPublicUrl(caminho).data.publicUrl
 }
