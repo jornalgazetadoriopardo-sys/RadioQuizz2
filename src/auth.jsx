@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { Loader2, Mail, UserRound } from 'lucide-react'
+import { Copy, ExternalLink, Loader2, Mail } from 'lucide-react'
 import { LOGIN, RADIO } from './config.js'
 import { mensagemDeErro, supabase } from './supabase.js'
 
@@ -51,6 +51,45 @@ export function Carregando({ texto = 'Carregando…' }) {
   )
 }
 
+// Navegador embutido do Facebook, Instagram, WhatsApp etc.: o Google não deixa fazer login nele.
+const navegadorEmbutido = () => /FBAN|FBAV|FB_IAB|FBIOS|Instagram|WhatsApp|Line\/|; wv\)/i.test(navigator.userAgent)
+const ehIphone = () => /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+/** Aviso para sair do navegador do Facebook/Instagram/WhatsApp e abrir no Chrome ou Safari. */
+function AbrirNoNavegador() {
+  const [copiado, setCopiado] = useState(false)
+  const endereco = window.location.origin + window.location.pathname
+  const abrirChrome = () => {
+    const semHttps = endereco.replace(/^https?:\/\//, '')
+    window.location.href = `intent://${semHttps}#Intent;scheme=https;package=com.android.chrome;end`
+  }
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(endereco)
+      setCopiado(true)
+    } catch {
+      setCopiado(false)
+    }
+  }
+  return (
+    <div className="space-y-3 rounded-2xl bg-white p-4 text-slate-900">
+      <p className="text-lg font-bold leading-snug">Para entrar com o Google, abra o quiz no navegador do celular.</p>
+      {ehIphone() ? (
+        <p className="text-base leading-snug text-slate-700">
+          Toque nos <b>três pontinhos (···)</b> ou no ícone de compartilhar e escolha <b>Abrir no Safari</b>.
+        </p>
+      ) : (
+        <button type="button" onClick={abrirChrome} className={`${btnCls} bg-marca-700 text-white`}>
+          <ExternalLink size={24} /> Abrir no Chrome
+        </button>
+      )}
+      <button type="button" onClick={copiar} className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-slate-100 text-base font-bold text-slate-800">
+        <Copy size={18} /> {copiado ? 'Endereço copiado! Cole no navegador.' : 'Copiar o endereço do quiz'}
+      </button>
+    </div>
+  )
+}
+
 const btnCls = 'flex min-h-[60px] w-full items-center justify-center gap-3 rounded-2xl px-4 text-xl font-extrabold transition active:scale-[.98] disabled:opacity-50'
 
 /** Tela de entrada. `admin` deixa de fora o "entrar só com o nome" (admin precisa de conta de verdade). */
@@ -81,6 +120,7 @@ export function TelaLogin({ admin = false }) {
 
   const google = () => executar(() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: voltarPara } }))
   const anonimo = () => executar(() => supabase.auth.signInAnonymously())
+  const embutido = !admin && navegadorEmbutido()
   const enviarEmail = async (e) => {
     e.preventDefault()
     // Com senha (contas criadas pelo painel do Supabase) entra direto, sem depender de envio de e-mail.
@@ -94,100 +134,207 @@ export function TelaLogin({ admin = false }) {
   }
 
   return (
-    <div className="fundo-marca flex h-full flex-col justify-center px-7 py-10 text-white">
-      <img src="/logo-difusora-branco.png" alt={`${RADIO.nome} ${RADIO.frequencia}`} className="h-20 w-auto self-start animate-pop" />
-      <h1 className="mt-8 font-display text-4xl font-black leading-tight">{admin ? 'Painel do Quiz' : 'Pergunta da Hora'}</h1>
-      <p className="mt-3 text-xl leading-snug text-white">
-        {admin
-          ? 'Entre com o e-mail cadastrado como administrador.'
-          : `Ouça a ${RADIO.nome} ${RADIO.frequencia}, responda as perguntas e concorra a prêmios!`}
-      </p>
+    <div className="fundo-marca no-scrollbar flex h-full flex-col overflow-y-auto px-7 pb-4 pt-10 text-white">
+      <div className="my-auto">
+        <img src="/logo-difusora-branco.png" alt={`${RADIO.nome} ${RADIO.frequencia}`} className="h-20 w-auto self-start animate-pop" />
+        <h1 className="mt-8 font-display text-4xl font-black leading-tight">{admin ? 'Painel do Quiz' : 'Pergunta da Hora'}</h1>
+        <p className="mt-3 text-xl leading-snug text-white">
+          {admin
+            ? 'Entre com o e-mail cadastrado como administrador.'
+            : `Ouça a ${RADIO.nome} ${RADIO.frequencia}, responda as perguntas e concorra a prêmios!`}
+        </p>
 
-      <div className="mt-8 space-y-3">
-        {etapa === 'inicio' && (
-          <>
-            {LOGIN.google && (
-              <button onClick={google} disabled={ocupado} className={`${btnCls} bg-white text-slate-900`}>
-                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-                  <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
-                  <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
-                  <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
-                  <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
-                </svg>
-                Continuar com Google
-              </button>
-            )}
-            {LOGIN.anonimo && !admin && (
-              <button onClick={anonimo} disabled={ocupado} className={`${btnCls} bg-ouro-400 text-marca-900 shadow-lg shadow-black/20`}>
-                {ocupado ? <Loader2 className="animate-spin" size={26} /> : <UserRound size={26} />} Entrar com meu nome
-              </button>
-            )}
-            {LOGIN.email && (
-              <button onClick={() => setEtapa('email')} disabled={ocupado} className={`${btnCls} bg-white text-marca-800`}>
-                <Mail size={24} /> Entrar com e-mail
-              </button>
-            )}
-          </>
-        )}
+        <div className="mt-8 space-y-3">
+          {etapa === 'inicio' && (
+            <>
+              {LOGIN.google && embutido && <AbrirNoNavegador />}
+              {LOGIN.google && !embutido && (
+                <button onClick={google} disabled={ocupado} className={`${btnCls} bg-white text-slate-900`}>
+                  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                    <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+                    <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+                    <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+                    <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+                  </svg>
+                  Continuar com Google
+                </button>
+              )}
+              {LOGIN.email && (
+                <button onClick={() => setEtapa('email')} disabled={ocupado} className={`${btnCls} bg-white text-marca-800`}>
+                  <Mail size={24} /> Entrar com e-mail
+                </button>
+              )}
+              {LOGIN.anonimo && !admin && (
+                <button onClick={anonimo} disabled={ocupado} className="min-h-[44px] w-full text-center text-base font-semibold text-white/80 underline">
+                  Entrar só com o nome (teste)
+                </button>
+              )}
+            </>
+          )}
 
-        {etapa === 'email' && (
-          <form onSubmit={enviarEmail} className="space-y-3">
-            <label className="block text-xl font-bold text-white" htmlFor="email">
-              Seu e-mail
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="voce@email.com"
-              autoComplete="email"
-              className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40"
-            />
-            {admin && (
+          {etapa === 'email' && (
+            <form onSubmit={enviarEmail} className="space-y-3">
+              <label className="block text-xl font-bold text-white" htmlFor="email">
+                Seu e-mail
+              </label>
               <input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="Senha (deixe em branco para receber link)"
-                autoComplete="current-password"
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="voce@email.com"
+                autoComplete="email"
                 className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40"
               />
-            )}
-            <button disabled={ocupado || !email.includes('@')} className={`${btnCls} bg-ouro-400 text-marca-900`}>
-              {ocupado ? <Loader2 className="animate-spin" size={18} /> : senha ? 'Entrar' : 'Receber link de acesso'}
-            </button>
-            <button type="button" onClick={() => setEtapa('inicio')} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
-              Voltar
-            </button>
-          </form>
-        )}
+              {admin && (
+                <input
+                  type="password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Senha (deixe em branco para receber código)"
+                  autoComplete="current-password"
+                  className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40"
+                />
+              )}
+              <button disabled={ocupado || !email.includes('@')} className={`${btnCls} bg-ouro-400 text-marca-900`}>
+                {ocupado ? <Loader2 className="animate-spin" size={18} /> : senha ? 'Entrar' : 'Receber código por e-mail'}
+              </button>
+              <button type="button" onClick={() => setEtapa('inicio')} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
+                Voltar
+              </button>
+            </form>
+          )}
 
-        {etapa === 'codigo' && (
-          <form onSubmit={verificarCodigo} className="space-y-3">
-            <div className="rounded-2xl bg-white/15 p-4 text-lg leading-snug">
-              Enviamos um e-mail para <b>{email}</b>. Abra a mensagem e toque no link para entrar, ou digite abaixo o código, se ele vier no e-mail.
-            </div>
-            <input
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 8))}
-              placeholder="Código"
-              className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-center text-2xl font-bold tracking-[0.4em] text-slate-900 outline-none"
-            />
-            <button disabled={ocupado || codigo.length < 6} className={`${btnCls} bg-ouro-400 text-marca-900`}>
-              {ocupado ? <Loader2 className="animate-spin" size={18} /> : 'Confirmar código'}
-            </button>
-            <button type="button" onClick={() => setEtapa('email')} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
-              Usar outro e-mail
-            </button>
-          </form>
-        )}
+          {etapa === 'codigo' && (
+            <form onSubmit={verificarCodigo} className="space-y-3">
+              <div className="rounded-2xl bg-white/15 p-4 text-lg leading-snug">
+                Enviamos um e-mail para <b>{email}</b> com um código de 6 números. Digite o código abaixo (ou toque no link do e-mail). Se não chegar, olhe também no lixo eletrônico.
+              </div>
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="Código"
+                className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-center text-2xl font-bold tracking-[0.4em] text-slate-900 outline-none"
+              />
+              <button disabled={ocupado || codigo.length < 6} className={`${btnCls} bg-ouro-400 text-marca-900`}>
+                {ocupado ? <Loader2 className="animate-spin" size={18} /> : 'Confirmar código'}
+              </button>
+              <button type="button" onClick={() => setEtapa('email')} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
+                Usar outro e-mail
+              </button>
+            </form>
+          )}
 
-        {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-red-700">{erro}</p>}
+          {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-red-700">{erro}</p>}
+        </div>
       </div>
+      {!admin && <LinkAdmin className="pt-6 text-white/40" />}
+    </div>
+  )
+}
+
+/** Link discreto para a produção chegar ao Painel Admin pelo celular. */
+export function LinkAdmin({ className = '' }) {
+  return (
+    <a href="#admin" className={`block text-center text-xs ${className}`}>
+      admin
+    </a>
+  )
+}
+
+// ---------- cadastro ----------
+const soNumeros = (v) => (v ?? '').replace(/\D/g, '')
+const mascaraCpf = (v) =>
+  soNumeros(v)
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+const mascaraZap = (v) => {
+  const n = soNumeros(v).replace(/^55(?=\d{10,11}$)/, '').slice(0, 11)
+  if (n.length <= 2) return n.length ? `(${n}` : ''
+  if (n.length <= 6) return `(${n.slice(0, 2)}) ${n.slice(2)}`
+  if (n.length <= 10) return `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`
+  return `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}`
+}
+export function cpfValido(v) {
+  const c = soNumeros(v)
+  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false
+  const dv = (n) => {
+    let s = 0
+    for (let i = 0; i < n; i++) s += Number(c[i]) * (n + 1 - i)
+    const r = s % 11
+    return r < 2 ? 0 : 11 - r
+  }
+  return dv(9) === Number(c[9]) && dv(10) === Number(c[10])
+}
+
+const campoCls = 'min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40'
+
+/** Depois de entrar com Google ou e-mail: nome, CPF e WhatsApp, uma vez só. */
+export function TelaCadastro() {
+  const { sessao, perfil, recarregarPerfil, sair } = useAuth()
+  const meta = sessao?.user?.user_metadata ?? {}
+  const [nome, setNome] = useState(perfil?.nome || meta.full_name || meta.name || '')
+  const [cpf, setCpf] = useState(mascaraCpf(perfil?.cpf))
+  const [zap, setZap] = useState(mascaraZap(perfil?.whatsapp))
+  const [aceite, setAceite] = useState(false)
+  const [ocupado, setOcupado] = useState(false)
+  const [erro, setErro] = useState('')
+  const cpfCompleto = soNumeros(cpf).length === 11
+  const cpfOk = cpfValido(cpf)
+  const zapOk = /^\d{10,11}$/.test(soNumeros(zap))
+  const valido = nome.trim().length >= 3 && cpfOk && zapOk && aceite
+
+  const salvar = async (e) => {
+    e.preventDefault()
+    setErro('')
+    setOcupado(true)
+    const { error } = await supabase.rpc('completar_cadastro', { p_nome: nome.trim(), p_cpf: soNumeros(cpf), p_whatsapp: soNumeros(zap) })
+    setOcupado(false)
+    if (error) return setErro(mensagemDeErro(error))
+    recarregarPerfil()
+  }
+
+  return (
+    <div className="fundo-marca no-scrollbar h-full overflow-y-auto px-7 py-8 text-white">
+      <img src="/logo-difusora-branco.png" alt="" className="mb-6 h-12 w-auto" />
+      <h1 className="font-display text-3xl font-black leading-tight">Complete seu cadastro</h1>
+      <p className="mt-2 text-lg leading-snug">É só desta vez. Com esses dados a rádio entra em contato se você ganhar.</p>
+      <form className="mt-5 space-y-4" onSubmit={salvar}>
+        <label className="block">
+          <span className="mb-1 block text-lg font-bold">Nome completo</span>
+          <input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" maxLength={60} className={campoCls} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-lg font-bold">CPF</span>
+          <input value={cpf} onChange={(e) => setCpf(mascaraCpf(e.target.value))} inputMode="numeric" placeholder="000.000.000-00" className={campoCls} />
+          {cpfCompleto && !cpfOk && <span className="mt-1 block rounded-xl bg-white px-3 py-1.5 text-base font-bold text-red-700">Esse CPF não é válido. Confira os números.</span>}
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-lg font-bold">WhatsApp (com DDD)</span>
+          <input value={zap} onChange={(e) => setZap(mascaraZap(e.target.value))} inputMode="tel" autoComplete="tel-national" placeholder="(19) 99999-9999" className={campoCls} />
+        </label>
+        <label className="flex items-start gap-3 rounded-2xl bg-white/10 p-4">
+          <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} className="mt-1 h-6 w-6 shrink-0 accent-ouro-400" />
+          <span className="text-base leading-snug">
+            Autorizo a {RADIO.nome} a usar meus dados para participar do quiz e para contato em caso de prêmio.{' '}
+            <a href="/privacidade.html" target="_blank" rel="noreferrer" className="font-bold underline">
+              Política de privacidade
+            </a>
+          </span>
+        </label>
+        <button disabled={!valido || ocupado} className={`${btnCls} bg-ouro-400 text-marca-900`}>
+          {ocupado ? <Loader2 className="animate-spin" size={24} /> : 'Salvar e começar a jogar'}
+        </button>
+        {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-red-700">{erro}</p>}
+        <button type="button" onClick={sair} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
+          Sair
+        </button>
+      </form>
     </div>
   )
 }
