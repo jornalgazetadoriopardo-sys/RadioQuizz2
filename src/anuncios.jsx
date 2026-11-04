@@ -491,3 +491,77 @@ export function PecaAnuncio({ p, comSom = false, tocar = true, aoTerminarVideo }
   }
   return <AnuncioSimples p={p} />
 }
+
+/* ---------- banner rotativo (tela inicial) ---------- */
+
+/** Endereço para onde o banner leva ao tocar: site, Instagram ou WhatsApp do patrocinador. */
+function linkDoPatrocinador(p) {
+  if (p.site) return /^https?:\/\//.test(p.site) ? p.site : `https://${p.site}`
+  if (p.instagram) return `https://instagram.com/${p.instagram.replace(/^@/, '')}`
+  const zap = (p.whatsapp ?? '').replace(/\D/g, '')
+  if (zap.length >= 10) return `https://wa.me/${zap.length <= 11 ? '55' + zap : zap}`
+  return null
+}
+
+function SlideBanner({ p }) {
+  const cor = p.cor_primaria || '#363c80'
+  const texto = sobre(cor)
+  const destaque = p.promo_titulo || p.slogan || p.descricao || (p.tipo === 'video' ? 'Assista ao nosso vídeo no quiz!' : '')
+  const yt = p.tipo === 'video' ? youtubeId(p.video_url) : null
+  const foto = p.imagens?.[0] || (yt ? `https://i.ytimg.com/vi/${yt}/mqdefault.jpg` : null)
+  return (
+    <div className="flex h-full items-center gap-3 px-4" style={{ background: cor, color: texto }}>
+      {p.tipo === 'automatico' || p.logo_url ? (
+        <Logo p={p} tamanho="h-16 w-16" className="shrink-0 shadow-sm" />
+      ) : (
+        <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-white text-marca-700 shadow-sm">
+          <Icone nome={p.icone} size={32} />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold uppercase tracking-wide opacity-80">{p.nome}</p>
+        <p className="mt-0.5 line-clamp-2 text-lg font-extrabold leading-snug">{destaque}</p>
+        {p.preco && <p className="mt-0.5 text-xl font-black">{p.preco}</p>}
+      </div>
+      {foto && <img src={foto} alt="" className="h-20 w-24 shrink-0 rounded-xl object-cover shadow-sm" />}
+    </div>
+  )
+}
+
+/** Banner que passa pelos patrocinadores a cada 5 s. Tocar abre o site/Instagram/WhatsApp do anunciante. */
+export function BannerPatrocinadores({ patrocinadores, className = '' }) {
+  const [i, setI] = useState(0)
+  const total = patrocinadores.length
+  useEffect(() => {
+    if (total < 2) return
+    const t = setInterval(() => setI((n) => (n + 1) % total), 5000)
+    return () => clearInterval(t)
+  }, [total])
+  if (!total) return null
+  const atual = patrocinadores[i % total]
+  const link = linkDoPatrocinador(atual)
+  const Caixa = link ? 'a' : 'div'
+  return (
+    <div className={`relative ${className}`}>
+      <Caixa {...(link ? { href: link, target: '_blank', rel: 'noreferrer' } : {})} className="block h-full">
+        <div key={atual.id} className="h-full animate-fade-up">
+          <SlideBanner p={atual} />
+        </div>
+      </Caixa>
+      <span className="absolute right-2 top-2 rounded-full bg-black/35 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Patrocínio</span>
+      {total > 1 && (
+        <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+          {patrocinadores.map((p, n) => (
+            <button
+              key={p.id}
+              type="button"
+              aria-label={`Ver ${p.nome}`}
+              onClick={() => setI(n)}
+              className={`h-2 rounded-full transition-all ${n === i % total ? 'w-5 bg-white' : 'w-2 bg-white/50'}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
