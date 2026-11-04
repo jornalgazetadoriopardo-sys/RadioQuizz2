@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { Loader2, Mail, Radio, UserRound } from 'lucide-react'
+import { Loader2, Mail, UserRound } from 'lucide-react'
 import { LOGIN, RADIO } from './config.js'
 import { mensagemDeErro, supabase } from './supabase.js'
 
@@ -45,7 +45,7 @@ export const useAuth = () => useContext(AuthContext)
 export function Carregando({ texto = 'Carregando…' }) {
   return (
     <div className="flex h-full min-h-60 flex-col items-center justify-center gap-3 text-lg font-semibold text-slate-700">
-      <Loader2 className="animate-spin text-rose-600" size={40} />
+      <Loader2 className="animate-spin text-marca-600" size={40} />
       {texto}
     </div>
   )
@@ -94,11 +94,9 @@ export function TelaLogin({ admin = false }) {
   }
 
   return (
-    <div className="flex h-full flex-col justify-center bg-gradient-to-b from-rose-600 to-rose-700 px-7 py-10 text-white">
-      <div className="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 animate-pop">
-        <Radio size={32} />
-      </div>
-      <h1 className="mt-6 font-display text-4xl leading-tight">{admin ? 'Painel do Quiz' : 'Pergunta da Hora'}</h1>
+    <div className="fundo-marca flex h-full flex-col justify-center px-7 py-10 text-white">
+      <img src="/logo-difusora-branco.png" alt={`${RADIO.nome} ${RADIO.frequencia}`} className="h-20 w-auto self-start animate-pop" />
+      <h1 className="mt-8 font-display text-4xl font-black leading-tight">{admin ? 'Painel do Quiz' : 'Pergunta da Hora'}</h1>
       <p className="mt-3 text-xl leading-snug text-white">
         {admin
           ? 'Entre com o e-mail cadastrado como administrador.'
@@ -120,12 +118,12 @@ export function TelaLogin({ admin = false }) {
               </button>
             )}
             {LOGIN.anonimo && !admin && (
-              <button onClick={anonimo} disabled={ocupado} className={`${btnCls} bg-white text-rose-700 shadow-lg`}>
+              <button onClick={anonimo} disabled={ocupado} className={`${btnCls} bg-ouro-400 text-marca-900 shadow-lg shadow-black/20`}>
                 {ocupado ? <Loader2 className="animate-spin" size={26} /> : <UserRound size={26} />} Entrar com meu nome
               </button>
             )}
             {LOGIN.email && (
-              <button onClick={() => setEtapa('email')} disabled={ocupado} className={`${btnCls} bg-slate-900 text-white`}>
+              <button onClick={() => setEtapa('email')} disabled={ocupado} className={`${btnCls} bg-white text-marca-800`}>
                 <Mail size={24} /> Entrar com e-mail
               </button>
             )}
@@ -157,7 +155,7 @@ export function TelaLogin({ admin = false }) {
                 className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40"
               />
             )}
-            <button disabled={ocupado || !email.includes('@')} className={`${btnCls} bg-slate-900 text-white`}>
+            <button disabled={ocupado || !email.includes('@')} className={`${btnCls} bg-ouro-400 text-marca-900`}>
               {ocupado ? <Loader2 className="animate-spin" size={18} /> : senha ? 'Entrar' : 'Receber link de acesso'}
             </button>
             <button type="button" onClick={() => setEtapa('inicio')} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
@@ -179,7 +177,7 @@ export function TelaLogin({ admin = false }) {
               placeholder="Código"
               className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-center text-2xl font-bold tracking-[0.4em] text-slate-900 outline-none"
             />
-            <button disabled={ocupado || codigo.length < 6} className={`${btnCls} bg-slate-900 text-white`}>
+            <button disabled={ocupado || codigo.length < 6} className={`${btnCls} bg-ouro-400 text-marca-900`}>
               {ocupado ? <Loader2 className="animate-spin" size={18} /> : 'Confirmar código'}
             </button>
             <button type="button" onClick={() => setEtapa('email')} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
@@ -188,7 +186,7 @@ export function TelaLogin({ admin = false }) {
           </form>
         )}
 
-        {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-rose-700">{erro}</p>}
+        {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-red-700">{erro}</p>}
       </div>
     </div>
   )
@@ -212,8 +210,9 @@ export function TelaNome() {
   }
 
   return (
-    <div className="flex h-full flex-col justify-center bg-gradient-to-b from-rose-600 to-rose-700 px-7 text-white">
-      <h1 className="font-display text-3xl leading-tight">Qual é o seu nome?</h1>
+    <div className="fundo-marca flex h-full flex-col justify-center px-7 text-white">
+      <img src="/logo-difusora-branco.png" alt="" className="mb-8 h-14 w-auto self-start" />
+      <h1 className="font-display text-3xl font-black leading-tight">Qual é o seu nome?</h1>
       <p className="mt-3 text-xl leading-snug text-white">É assim que você vai aparecer no ranking e ser chamado no rádio se ganhar.</p>
       <form className="mt-6 space-y-3" onSubmit={salvar}>
         <input
@@ -224,10 +223,10 @@ export function TelaNome() {
           maxLength={40}
           className="min-h-[60px] w-full rounded-2xl bg-white px-4 text-xl text-slate-900 outline-none ring-4 ring-transparent focus:ring-white/40"
         />
-        <button disabled={!valido || ocupado} className={`${btnCls} bg-slate-900 text-white`}>
+        <button disabled={!valido || ocupado} className={`${btnCls} bg-ouro-400 text-marca-900`}>
           Começar a jogar
         </button>
-        {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-rose-700">{erro}</p>}
+        {erro && <p className="rounded-2xl bg-white px-4 py-3 text-center text-lg font-bold text-red-700">{erro}</p>}
         <button type="button" onClick={sair} className="min-h-[48px] w-full text-center text-lg font-semibold text-white underline">
           Sair
         </button>

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AtSign, Globe, ImageIcon, MapPin, MessageCircle, Phone, Volume2, Zap } from 'lucide-react'
 import { CORES, Icone } from './ui.jsx'
 
@@ -23,22 +23,219 @@ export function youtubeId(url) {
   return m ? m[1] : null
 }
 export const ehShorts = (url) => /youtube\.com\/shorts\//.test(url ?? '')
+/** Vídeo enviado como arquivo (MP4) para o próprio app, e não link do YouTube. */
+export const ehArquivoVideo = (url) => /^https?:\/\//.test(url ?? '') && !youtubeId(url)
 
-function VideoYouTube({ url, vertical }) {
+/* ---------- vídeo em arquivo (MP4) ---------- */
+
+// Os celulares só deixam um vídeo tocar com som se ele tiver sido "tocado" logo depois de um toque da pessoa.
+// Os vídeos de anúncio já carregados se registram aqui, e os botões "Vou participar" e
+// "Confira sua resposta" chamam liberarVideos() no próprio toque: cada vídeo dá um play/pause
+// instantâneo (sem volume) e fica liberado para começar com som depois, quando o relógio zerar.
+const liberadores = new Set()
+export function liberarVideos() {
+  for (const liberar of liberadores) liberar()
+}
+
+function VideoArquivo({ url, vertical, comSom = false, tocar = true, aoTerminar }) {
+  const video = useRef(null)
+  const [semSom, setSemSom] = useState(!comSom)
+  const fim = useRef(aoTerminar)
+  fim.current = aoTerminar
+
+  useEffect(() => {
+    const v = video.current
+    if (!comSom || !v) return
+    const liberar = () => {
+      if (v.dataset.liberado) return
+      v.muted = false
+      const p = v.play()
+      v.pause()
+      p?.catch(() => {})
+      v.dataset.liberado = '1'
+    }
+    liberadores.add(liberar)
+    return () => liberadores.delete(liberar)
+  }, [comSom])
+
+  useEffect(() => {
+    const v = video.current
+    if (!v) return
+    if (!tocar) {
+      if (!v.paused) v.pause()
+      return
+    }
+    if (!comSom) {
+      v.muted = true
+      v.play().catch(() => {})
+      return
+    }
+    v.currentTime = 0
+    v.muted = false
+    v.play().catch(() => {
+      // o celular bloqueou o som: toca sem som e mostra o botão
+      v.muted = true
+      setSemSom(true)
+      v.play().catch(() => {})
+    })
+  }, [tocar, comSom])
+
+  const ligarSom = () => {
+    const v = video.current
+    v.muted = false
+    v.play().catch(() => {})
+    setSemSom(false)
+  }
+
+  return (
+    <div className="relative">
+      <div className={`overflow-hidden rounded-2xl bg-black ${vertical ? 'mx-auto aspect-[9/16] max-h-[420px]' : 'aspect-video'}`}>
+        <video
+          ref={video}
+          src={url}
+          preload="auto"
+          playsInline
+          muted={!comSom}
+          loop={!aoTerminar}
+          onEnded={() => fim.current?.()}
+          className="h-full w-full object-contain"
+        />
+      </div>
+      {semSom && tocar && (
+        <button
+          onClick={ligarSom}
+          className="mx-auto mt-3 flex min-h-[56px] items-center gap-2 rounded-full bg-marca-800 px-7 text-xl font-bold text-white shadow-lg active:scale-[.98]"
+        >
+          <Volume2 size={24} /> Ouvir com som
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Vídeo do patrocinador.
+ * comSom: o vídeo é carregado parado (enquanto o ouvinte vê o relógio ou a pergunta) e só começa, já com som,
+ *   quando `tocar` vira true — depois do toque em "Vou participar" / "Confira sua resposta", que é o que o
+ *   navegador exige para liberar o som. Se o celular bloquear mesmo assim (alguns iPhones), toca sem som e
+ *   aparece o botão "Ouvir com som".
+ * Sem comSom (prévia do painel): começa sozinho sem som, com o botão.
+ * aoTerminar: chamado quando o vídeo acaba (sem ele, o vídeo fica repetindo).
+ */
+function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar }) {
   const id = youtubeId(url)
   const quadro = useRef(null)
-  const [comSom, setComSom] = useState(false)
-  if (!id) return <Aviso texto="Link do YouTube inválido" />
+  const [pronto, setPronto] = useState(false)
+  const [mostrarBotao, setMostrarBotao] = useState(!comSom)
+  const player = useRef({ estado: -1, mudo: !comSom, mandouTocar: false, liberando: false, liberado: false })
+  const tocarAgora = useRef(tocar)
+  tocarAgora.current = tocar
+  const fim = useRef(aoTerminar)
+  fim.current = aoTerminar
 
-  // Começa sem som (é a única forma que os celulares permitem tocar sozinho); o botão liga o som.
-  const ligarSom = () => {
-    const enviar = (func, args = []) => quadro.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*')
+  const enviar = (func, args = []) => quadro.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*')
+
+  // Conversa com o player do YouTube: pede os avisos até ele responder e acompanha o estado
+  useEffect(() => {
+    const aoReceber = (e) => {
+      if (!quadro.current || e.source !== quadro.current.contentWindow) return
+      let d
+      try {
+        d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+      } catch {
+        return
+      }
+      if (!d?.event) return
+      if (!player.current.pronto && player.current.querLiberar) setTimeout(player.current.querLiberar, 0)
+      player.current.pronto = true
+      setPronto(true)
+      const info = d.info
+      const estado = d.event === 'onStateChange' ? info : info?.playerState
+      if (typeof estado === 'number') player.current.estado = estado
+      if (typeof info?.muted === 'boolean') player.current.mudo = info.muted
+      if (estado === 0) fim.current?.()
+      // destravando o som no toque: assim que começou, pausa e volta ao início (se ainda não é a hora dele)
+      if (player.current.liberando && estado === 1) terminarLiberacao()
+      if (player.current.mandouTocar && player.current.estado === 1) setMostrarBotao(player.current.mudo)
+    }
+    window.addEventListener('message', aoReceber)
+    const chamar = setInterval(() => {
+      if (player.current.pronto) return clearInterval(chamar)
+      quadro.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'anuncio', channel: 'widget' }), '*')
+    }, 400)
+    return () => {
+      window.removeEventListener('message', aoReceber)
+      clearInterval(chamar)
+    }
+  }, [])
+
+  function terminarLiberacao() {
+    if (!player.current.liberando) return
+    player.current.liberando = false
+    player.current.liberado = true
+    if (!tocarAgora.current) {
+      enviar('pauseVideo')
+      enviar('seekTo', [0, true])
+    }
+    enviar('setVolume', [100])
+  }
+
+  // Registra o destravamento do som, chamado no toque em "Vou participar" / "Confira sua resposta"
+  useEffect(() => {
+    if (!comSom) return
+    const liberar = () => {
+      if (player.current.liberado || tocarAgora.current) return
+      // tocou antes de o player terminar de carregar: destrava assim que ele ficar pronto
+      if (!player.current.pronto) return (player.current.querLiberar = liberar)
+      player.current.liberando = true
+      enviar('setVolume', [0])
+      enviar('unMute')
+      enviar('playVideo')
+      setTimeout(terminarLiberacao, 1500)
+    }
+    liberadores.add(liberar)
+    return () => liberadores.delete(liberar)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comSom])
+
+  // Hora de tocar: com o player pronto, começa com som. Se em 2,5 s não estiver tocando, o celular
+  // bloqueou o som → toca sem som e mostra o botão.
+  useEffect(() => {
+    if (!comSom || !tocar || !pronto) return
+    player.current.mandouTocar = true
     enviar('unMute')
     enviar('setVolume', [100])
     enviar('playVideo')
-    setComSom(true)
+    const t = setTimeout(() => {
+      if (player.current.estado !== 1) {
+        enviar('mute')
+        enviar('playVideo')
+        setMostrarBotao(true)
+      } else if (player.current.mudo) setMostrarBotao(true)
+    }, 2500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comSom, tocar, pronto])
+
+  // Saiu da tela: para o vídeo
+  useEffect(() => {
+    if (comSom && !tocar && player.current.mandouTocar) enviar('pauseVideo')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tocar])
+
+  if (!id) return <Aviso texto="Link do YouTube inválido" />
+
+  const ligarSom = () => {
+    player.current.mandouTocar = true
+    enviar('unMute')
+    enviar('setVolume', [100])
+    enviar('playVideo')
+    setMostrarBotao(false)
   }
-  const params = new URLSearchParams({ autoplay: '1', mute: '1', playsinline: '1', controls: '0', rel: '0', modestbranding: '1', enablejsapi: '1', loop: '1', playlist: id })
+  const params = new URLSearchParams({
+    autoplay: comSom ? '0' : '1', mute: comSom ? '0' : '1', playsinline: '1', controls: '0', rel: '0', modestbranding: '1',
+    enablejsapi: '1', origin: window.location.origin, ...(aoTerminar ? {} : { loop: '1', playlist: id }),
+  })
 
   return (
     <div className="relative">
@@ -52,12 +249,12 @@ function VideoYouTube({ url, vertical }) {
           className="h-full w-full"
         />
       </div>
-      {!comSom && (
+      {mostrarBotao && tocar && (
         <button
           onClick={ligarSom}
-          className="mx-auto mt-3 flex min-h-[52px] items-center gap-2 rounded-full bg-slate-900 px-6 text-lg font-bold text-white shadow-lg active:scale-[.98]"
+          className="mx-auto mt-3 flex min-h-[56px] items-center gap-2 rounded-full bg-marca-800 px-7 text-xl font-bold text-white shadow-lg active:scale-[.98]"
         >
-          <Volume2 size={22} /> Ouvir com som
+          <Volume2 size={24} /> Ouvir com som
         </button>
       )}
     </div>
@@ -283,9 +480,11 @@ function AnuncioSimples({ p }) {
 }
 
 /** A peça do anúncio, conforme o tipo cadastrado. */
-export function PecaAnuncio({ p }) {
+export function PecaAnuncio({ p, comSom = false, tocar = true, aoTerminarVideo }) {
   if (!p) return <Aviso texto="Espaço publicitário disponível" />
-  if (p.tipo === 'video') return <VideoYouTube key={p.video_url} url={p.video_url} vertical={p.video_vertical} />
+  if (p.tipo === 'video' && ehArquivoVideo(p.video_url))
+    return <VideoArquivo key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} />
+  if (p.tipo === 'video') return <VideoYouTube key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} />
   if (p.tipo === 'automatico') {
     const L = LAYOUT_COMPONENTE[p.layout] ?? LayoutOferta
     return <L p={p} />

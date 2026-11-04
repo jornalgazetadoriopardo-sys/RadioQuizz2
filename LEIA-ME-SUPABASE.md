@@ -20,6 +20,17 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
 - `007_notificacoes.sql` — notificações no celular. Depois dele é preciso publicar a função `enviar-push`
   (veja a seção **Notificações** abaixo).
 - `008_anuncios.sql` — anúncios de patrocinador em vídeo do YouTube e montados automaticamente (layouts prontos).
+- `009_segundos.sql` — horários das rodadas com segundos e agendador conferindo a cada segundo. Depois dele,
+  **publique de novo a função `enviar-push`** (Edge Functions → enviar-push → cole o arquivo atualizado → Deploy).
+- `010_corrige_agendamento.sql` — corrige rodadas automáticas que não abriam: uma rodada que já tinha sido
+  encerrada (num teste ou porque o horário passou) agora volta a ficar "agendada" quando você muda a data ou o
+  horário dela, e encerrar à mão antes do horário não cancela mais o agendamento. Cria também o
+  **Diagnóstico do agendamento** (Painel Admin → Ao vivo). No fim ele mostra se o agendador está ATIVO e
+  quantas vezes conferiu no último minuto.
+- `011_entrada_na_rodada.sql` — o tempo no ar passa a ser o prazo para **entrar** (tocar em Responder). Quem
+  entrou a tempo vê o anúncio e depois responde normalmente, mesmo que a rodada feche durante o anúncio.
+- `012_todos_juntos.sql` — depois do "Vou participar", o relógio continua até o fim do tempo da rodada e todos
+  começam o anúncio e a pergunta juntos. Precisa do 010 e do 011.
 
 ## 2. Ligar as formas de login
 Em **Authentication → Sign In / Providers**:
@@ -64,11 +75,22 @@ e procure a linha com erro no horário da tentativa. Causas comuns:
 
 ## Rodadas manuais e automáticas
 - **Manual:** a produção clica em **No ar** e em **Encerrar rodada** (aba Ao vivo). Data e horários são só informativos.
-- **Automático:** a rodada abre e fecha sozinha na data e nos horários cadastrados (horário de Brasília). O agendador
-  confere a cada 15 segundos (ou a cada minuto, conforme a versão do Supabase).
+- **Automático:** a rodada abre e fecha sozinha na data e nos horários cadastrados, com segundos (horário de Brasília).
+  Use **Fica no ar por (segundos)** para a rodada ficar aberta só alguns segundos — o encerramento é calculado sozinho.
+  O agendador confere a cada 1 segundo (ou a cada 15 s / 1 min, conforme a versão do Supabase; o resultado do
+  `009_segundos.sql` mostra qual ficou).
+- Enquanto a rodada está no ar, o ouvinte pode **tocar em Responder** (o app mostra "Toque em até X s"). Quem entrou
+  a tempo vê o anúncio e depois tem o **tempo para responder** da pergunta, mesmo que a rodada já tenha fechado.
+  Ex.: 10 s no ar + anúncio de 15 s + 20 s para responder. A vaga vale só pelo tempo do anúncio mais longo
+  + 20 s, para ninguém esperar o locutor dar a resposta antes de abrir a pergunta.
 - Numa rodada automática o botão manual continua valendo: **No ar** adianta ou reabre, **Encerrar** fecha antes.
   Se reabrir depois do horário de encerramento, quem fecha é a produção.
 - Abrir uma rodada (manual ou automática) tira do ar a que estava no ar antes.
+- Testou uma rodada automática com **No ar** e **Encerrar** antes do horário dela? Ela continua agendada e abre
+  no horário. Se encerrar durante o horário dela, ela fica encerrada (para reabrir, mude o horário ou use **No ar**).
+- **Diagnóstico do agendamento** (aba Ao vivo): mostra se o agendador do banco está rodando, a última conferência,
+  erros e como o banco vê cada rodada automática. **Conferir agenda agora** abre/fecha na hora o que estiver no
+  horário.
 - O **Horário oficial** no topo do Painel Admin é a hora do servidor, a mesma usada pelo agendador. Se o relógio do
   computador estiver diferente, aparece um aviso ("Este computador está 2 min adiantado"). Na aba **Ao vivo** há a
   contagem para a rodada no ar fechar e para a próxima automática abrir.
@@ -113,7 +135,12 @@ chaves de envio e guarda no banco, num lugar que só o servidor lê.
 ## Anúncios dos patrocinadores
 Em **Painel Admin → Patrocinadores**, cada anunciante tem um tipo de anúncio:
 - **Simples:** logotipo (ou ícone), frase e descrição.
-- **Vídeo do YouTube:** cole o link do vídeo. No YouTube, deixe a visibilidade como **Não listado** e marque
+- **Vídeo — arquivo MP4 (recomendado):** envie o arquivo (até 20 MB). O app toca o vídeo ele mesmo, e o toque do
+  ouvinte em "Vou participar" / "Confira sua resposta" libera o som em qualquer celular, inclusive iPhone. O tempo na
+  tela é ajustado sozinho para a duração do vídeo. Prefira vídeos curtos em 720p: cada ouvinte baixa o vídeo, e isso
+  conta no limite de transferência do plano do Supabase (5 GB/mês no plano gratuito).
+- **Vídeo — link do YouTube:** cole o link do vídeo. Em alguns celulares (principalmente iPhone) o YouTube não deixa
+  começar com som; aí aparece o botão "Ouvir com som". No YouTube, deixe a visibilidade como **Não listado** e marque
   **Permitir incorporação**. O vídeo começa sem som (regra dos celulares) e o ouvinte toca em "Ouvir com som".
   Escolha horizontal ou vertical (Shorts) e ajuste o **tempo na tela** para a duração do vídeo (até 120 s).
 - **Montado pelo app:** logotipo em PNG, cores, título e descrição da promoção, preço (e preço antigo riscado),

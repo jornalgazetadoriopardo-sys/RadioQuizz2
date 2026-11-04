@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from './auth.jsx'
 import { supabase } from './supabase.js'
-import { agoraServidor } from './relogio.js'
+import { agoraServidor, instanteRodada } from './relogio.js'
 
 const DataContext = createContext(null)
 
@@ -48,18 +48,41 @@ export function DataProvider({ children }) {
         if (tabela === 'rodadas') recarregarMinhasRespostas()
       })
     }
-    canal.subscribe()
+    let conectado = false
+    canal.subscribe((status) => {
+      conectado = status === 'SUBSCRIBED'
+    })
 
-    // Rede de segurança: se o tempo real cair (celular em segundo plano), atualiza ao voltar para o app.
+    // Rede de segurança: se o tempo real cair, confere as rodadas a cada 5 s até voltar;
+    // e sempre atualiza ao voltar para o app (celular em segundo plano).
+    const vigia = setInterval(() => !conectado && document.visibilityState === 'visible' && recarregar('rodadas'), 5000)
     const aoVoltar = () => document.visibilityState === 'visible' && recarregar('rodadas')
     document.addEventListener('visibilitychange', aoVoltar)
 
     return () => {
       ativo = false
+      clearInterval(vigia)
       supabase.removeChannel(canal)
       document.removeEventListener('visibilitychange', aoVoltar)
     }
   }, [usuarioId, recarregar, recarregarMinhasRespostas])
+
+  // Na hora em que uma rodada automática deve abrir ou fechar, confere de novo (logo depois do agendador),
+  // mesmo que o aviso em tempo real não chegue.
+  useEffect(() => {
+    if (!usuarioId) return
+    const agora = agoraServidor().getTime()
+    const proxima = dados.rodadas
+      .filter((r) => r.modo === 'automatico' && r.status !== 'encerrada')
+      .flatMap((r) => [instanteRodada(r.data, r.horario), instanteRodada(r.data, r.horario_fim)])
+      .map((d) => d?.getTime())
+      .filter((t) => t && t > agora)
+      .sort((a, b) => a - b)[0]
+    if (!proxima || proxima - agora > 6 * 3600_000) return
+    const espera = proxima - agora
+    const timers = [1500, 5000].map((folga) => setTimeout(() => recarregar('rodadas'), espera + folga))
+    return () => timers.forEach(clearTimeout)
+  }, [usuarioId, dados.rodadas, recarregar])
 
   const value = useMemo(() => {
     const { rodadas } = dados
@@ -109,8 +132,38 @@ export const hojeSP = () => agoraServidor().toLocaleDateString('en-CA', { timeZo
 export const horaSP = () => agoraServidor().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false })
 // '2026-10-21' → '21/10'
 export const diaMes = (data) => (data ? `${data.slice(8, 10)}/${data.slice(5, 7)}` : '')
-/** "10:30" se for hoje (ou sem data), "22/10 às 10:30" se for outro dia. */
-export const quandoTexto = (r) => (r.data && r.data !== hojeSP() ? `${diaMes(r.data)} às ${r.horario}` : r.horario)
+/** "10:30:00" → "10:30"; "10:30:45" fica com os segundos. */
+export const fmtHorario = (h) => (h && h.length > 5 && h.endsWith(':00') ? h.slice(0, 5) : h ?? '')
+/** Nome da rodada para o ouvinte: a categoria (rodadas antigas sem categoria usam o título). */
+export const nomeRodada = (r) => r?.categoria?.trim() || r?.titulo || ''
+/** "10:00" → "10 horas", "10:30" → "10h30", "10:30:15" → "10h30min15s" */
+export const horaFalada = (h) => {
+  const [hh, mm, ss = '00'] = (h ?? '').split(':')
+  if (!hh) return ''
+  const n = Number(hh)
+  if (mm === '00' && ss === '00') return `${n} ${n === 1 ? 'hora' : 'horas'}`
+  return ss === '00' ? `${n}h${mm}` : `${n}h${mm}min${ss}s`
+}
+/** Quando é a próxima rodada: "às 10h30", "amanhã, às 10h30" ou "no dia 28/10, às 10h30". */
+export const quandoFalado = (r) => {
+  const hoje = hojeSP()
+  const amanha = new Date(`${hoje}T12:00:00Z`)
+  amanha.setUTCDate(amanha.getUTCDate() + 1)
+  const dia = !r.data || r.data === hoje ? '' : r.data === amanha.toISOString().slice(0, 10) ? 'amanhã, ' : `no dia ${diaMes(r.data)}, `
+  return `${dia}às ${horaFalada(r.horario)}`
+}
+/** "10:30" → "10:30:00" (o banco guarda sempre com segundos). */
+export const comSegundos = (h) => (h && h.length === 5 ? `${h}:00` : h)
+/** Segundos entre dois horários do mesmo dia ("10:30:00" → "10:30:45" = 45). */
+export const segundosEntre = (ini, fim) => {
+  const s = (h) => (h ? h.split(':').reduce((t, v, i) => t + Number(v) * [3600, 60, 1][i], 0) : NaN)
+  return s(fim) - s(ini)
+}
+/** Soma segundos a um horário ("10:30:00" + 45 → "10:30:45"), sem passar de 23:59:59. */
+export const somarSegundos = (h, n) => {
+  const total = Math.min(86399, Math.max(0, segundosEntre('00:00:00', comSegundos(h)) + n))
+  return [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60].map((v) => String(v).padStart(2, '0')).join(':')
+}
 
 // Pontos no formato brasileiro: 53,75
 export const fmt = (n) => Number(n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

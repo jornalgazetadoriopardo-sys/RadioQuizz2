@@ -35,7 +35,7 @@ export function Campo({ rotulo, className = '', children }) {
   )
 }
 
-export const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:ring-4 focus:ring-rose-100'
+export const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-marca-400 focus:ring-4 focus:ring-marca-100'
 
 export function Texto({ valor, onChange, multilinha, ...props }) {
   return multilinha ? (
@@ -51,10 +51,10 @@ export function Numero({ valor, onChange, ...props }) {
 
 export function Botao({ variante = 'primario', className = '', children, ...props }) {
   const v = {
-    primario: 'bg-rose-600 text-white hover:bg-rose-700',
+    primario: 'bg-marca-600 text-white hover:bg-marca-700',
     secundario: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-    perigo: 'bg-white text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50',
-    escuro: 'bg-slate-900 text-white hover:bg-slate-800',
+    perigo: 'bg-white text-red-600 ring-1 ring-red-200 hover:bg-red-50',
+    escuro: 'bg-marca-800 text-white hover:bg-marca-900',
   }
   return (
     <button className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm transition active:scale-[.98] disabled:opacity-40 ${v[variante]} ${className}`} {...props}>
@@ -71,6 +71,17 @@ export async function enviarImagem(arquivo, pasta) {
   if (arquivo.size > 3 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 3 MB.')
   const caminho = `${pasta}/${Date.now()}-${arquivo.name.replace(/[^\w.-]/g, '_')}`
   const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { upsert: true })
+  if (error) throw new Error(mensagemDeErro(error))
+  return supabase.storage.from('patrocinadores').getPublicUrl(caminho).data.publicUrl
+}
+
+/** Envia o vídeo de um anúncio (MP4) e devolve o endereço público. */
+export async function enviarVideo(arquivo, pasta) {
+  if (!arquivo) return null
+  if (!/^video\/(mp4|quicktime)$/.test(arquivo.type)) throw new Error('Use um vídeo MP4 (ou MOV gravado no iPhone).')
+  if (arquivo.size > 20 * 1024 * 1024) throw new Error('O vídeo deve ter no máximo 20 MB. Exporte em 720p ou menor.')
+  const caminho = `${pasta}/${Date.now()}-${arquivo.name.replace(/[^\w.-]/g, '_')}`
+  const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { upsert: true, contentType: arquivo.type })
   if (error) throw new Error(mensagemDeErro(error))
   return supabase.storage.from('patrocinadores').getPublicUrl(caminho).data.publicUrl
 }

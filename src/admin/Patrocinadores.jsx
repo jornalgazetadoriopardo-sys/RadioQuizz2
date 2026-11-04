@@ -4,12 +4,12 @@ import { mensagemDeErro, supabase } from '../supabase.js'
 import { CORES, Card, ICONES_PATROCINADOR, Icone, Vazio } from '../ui.jsx'
 import { Carregando } from '../auth.jsx'
 import { DURACOES } from '../config.js'
-import { LAYOUTS, PecaAnuncio, ehShorts, youtubeId } from '../anuncios.jsx'
-import { Botao, Campo, Texto, enviarImagem, inputCls, useTabela } from './comum.jsx'
+import { LAYOUTS, PecaAnuncio, ehArquivoVideo, ehShorts, youtubeId } from '../anuncios.jsx'
+import { Botao, Campo, Texto, enviarImagem, enviarVideo, inputCls, useTabela } from './comum.jsx'
 
 const TIPOS = [
-  { id: 'simples', nome: 'Simples', descricao: 'Logo ou ícone com uma frase. Rápido de cadastrar.', icone: Megaphone, cor: 'bg-amber-100 text-amber-700' },
-  { id: 'video', nome: 'Vídeo do YouTube', descricao: 'Cole o link de um vídeo (pode ser "Não listado").', icone: Clapperboard, cor: 'bg-rose-100 text-rose-700' },
+  { id: 'simples', nome: 'Simples', descricao: 'Logo ou ícone com uma frase. Rápido de cadastrar.', icone: Megaphone, cor: 'bg-ouro-100 text-ouro-700' },
+  { id: 'video', nome: 'Vídeo', descricao: 'Envie o arquivo MP4 (som garantido) ou cole um link do YouTube.', icone: Clapperboard, cor: 'bg-marca-100 text-marca-700' },
   { id: 'automatico', nome: 'Montado pelo app', descricao: 'Logo, contatos, cores e promoção num layout pronto.', icone: Sparkles, cor: 'bg-violet-100 text-violet-700' },
 ]
 
@@ -50,7 +50,7 @@ const COLUNAS = Object.keys(novoPatrocinador())
 function validar(p) {
   if (!p.nome.trim()) return 'Informe o nome do anunciante.'
   if (p.tipo === 'simples' && !p.slogan.trim()) return 'Escreva a frase do anúncio.'
-  if (p.tipo === 'video' && !youtubeId(p.video_url)) return 'Cole um link válido do YouTube.'
+  if (p.tipo === 'video' && !youtubeId(p.video_url) && !ehArquivoVideo(p.video_url)) return 'Envie o arquivo do vídeo ou cole um link válido do YouTube.'
   if (p.tipo === 'automatico' && !p.promo_titulo.trim() && !p.logo_url) return 'Coloque pelo menos o logotipo ou o título da promoção.'
   return ''
 }
@@ -103,9 +103,9 @@ export default function Patrocinadores() {
       <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
         <button
           onClick={() => setRascunho(novoPatrocinador())}
-          className="flex w-40 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-rose-300 bg-rose-50/60 p-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+          className="flex w-40 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-marca-300 bg-marca-50/60 p-4 text-sm font-semibold text-marca-700 transition hover:bg-marca-50"
         >
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-rose-600 text-white">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-marca-600 text-white">
             <Plus size={20} />
           </span>
           Novo patrocinador
@@ -118,7 +118,7 @@ export default function Patrocinadores() {
               key={p.id}
               onClick={() => setRascunho({ ...novoPatrocinador(), ...p })}
               className={`flex w-56 shrink-0 items-center gap-3 rounded-2xl bg-white p-3 text-left shadow-sm ring-1 transition hover:shadow-md ${
-                ativo ? 'ring-2 ring-rose-500' : 'ring-slate-200'
+                ativo ? 'ring-2 ring-marca-500' : 'ring-slate-200'
               } ${p.ativo ? '' : 'opacity-60'}`}
             >
               <span className={`grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl ${tipo.cor}`}>
@@ -145,10 +145,10 @@ export default function Patrocinadores() {
                   key={t.id}
                   type="button"
                   onClick={() => set('tipo', t.id)}
-                  className={`relative rounded-2xl bg-white p-4 text-left ring-2 transition hover:shadow-md ${rascunho.tipo === t.id ? 'ring-rose-500' : 'ring-slate-200'}`}
+                  className={`relative rounded-2xl bg-white p-4 text-left ring-2 transition hover:shadow-md ${rascunho.tipo === t.id ? 'ring-marca-500' : 'ring-slate-200'}`}
                 >
                   {rascunho.tipo === t.id && (
-                    <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-rose-600 text-white">
+                    <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-marca-600 text-white">
                       <Check size={14} />
                     </span>
                   )}
@@ -198,7 +198,7 @@ export default function Patrocinadores() {
                 </span>
               </Campo>
               <label className="flex cursor-pointer items-center gap-3 self-start rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
-                <input type="checkbox" checked={rascunho.ativo} onChange={(e) => set('ativo', e.target.checked)} className="h-5 w-5 accent-rose-600" />
+                <input type="checkbox" checked={rascunho.ativo} onChange={(e) => set('ativo', e.target.checked)} className="h-5 w-5 accent-marca-600" />
                 <span>
                   <span className="block text-sm font-semibold">Anúncio ativo</span>
                   <span className="block text-xs text-slate-500">Aparece para os ouvintes antes das perguntas.</span>
@@ -211,9 +211,9 @@ export default function Patrocinadores() {
             <Botao onClick={salvar} disabled={!!problema || estado === 'salvando'}>
               {estado === 'salvando' ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Salvar patrocinador
             </Botao>
-            {problema && <span className="text-sm font-semibold text-amber-700">{problema}</span>}
+            {problema && <span className="text-sm font-semibold text-ouro-700">{problema}</span>}
             {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo! Os celulares já foram atualizados.</span>}
-            {erro && <span className="text-sm font-semibold text-rose-600">{erro}</span>}
+            {erro && <span className="text-sm font-semibold text-red-600">{erro}</span>}
             {existe && (
               <Botao variante="perigo" className="ml-auto" onClick={excluir}>
                 <Trash2 size={15} /> Excluir
@@ -271,18 +271,18 @@ function EnvioImagem({ rotulo, url, pasta, aoEnviar, aoRemover }) {
     <div>
       <span className="mb-1 block text-xs font-semibold text-slate-600">{rotulo}</span>
       <div className="flex items-center gap-3">
-        <label className="group relative grid h-20 w-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-rose-400">
-          {url ? <img src={url} alt="" className="h-full w-full object-contain p-1" /> : enviando ? <Loader2 className="animate-spin text-rose-600" /> : <ImagePlus className="text-slate-400 group-hover:text-rose-500" />}
+        <label className="group relative grid h-20 w-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-marca-400">
+          {url ? <img src={url} alt="" className="h-full w-full object-contain p-1" /> : enviando ? <Loader2 className="animate-spin text-marca-600" /> : <ImagePlus className="text-slate-400 group-hover:text-marca-500" />}
           <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolher(e.target.files[0])} />
         </label>
         <div className="text-xs text-slate-500">
           <p>{url ? 'Clique na imagem para trocar.' : 'Clique para enviar (até 3 MB).'}</p>
           {url && (
-            <button type="button" onClick={aoRemover} className="mt-1 font-semibold text-rose-600 underline">
+            <button type="button" onClick={aoRemover} className="mt-1 font-semibold text-marca-600 underline">
               Remover
             </button>
           )}
-          {erro && <p className="mt-1 font-semibold text-rose-600">{erro}</p>}
+          {erro && <p className="mt-1 font-semibold text-red-600">{erro}</p>}
         </div>
       </div>
     </div>
@@ -338,49 +338,114 @@ function ConteudoSimples({ p, set }) {
 
 function ConteudoVideo({ p, set }) {
   const id = youtubeId(p.video_url)
+  const [fonte, setFonte] = useState(id ? 'youtube' : 'arquivo')
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState('')
+
+  const escolherArquivo = async (arquivo) => {
+    if (!arquivo) return
+    setErro('')
+    setEnviando(true)
+    try {
+      // lê duração e formato do próprio arquivo
+      const meta = await new Promise((ok) => {
+        const v = document.createElement('video')
+        v.preload = 'metadata'
+        v.onloadedmetadata = () => ok({ duracao: v.duration, vertical: v.videoHeight > v.videoWidth })
+        v.onerror = () => ok(null)
+        v.src = URL.createObjectURL(arquivo)
+      })
+      const url = await enviarVideo(arquivo, 'videos')
+      set('video_url', url)
+      if (meta) {
+        set('video_vertical', meta.vertical)
+        if (Number.isFinite(meta.duracao)) set('duracao_segundos', Math.min(120, Math.max(5, Math.ceil(meta.duracao))))
+      }
+    } catch (e) {
+      setErro(e.message)
+    }
+    setEnviando(false)
+  }
+
   return (
-    <Etapa numero={3} titulo="Vídeo do YouTube">
+    <Etapa numero={3} titulo="Vídeo">
       <div className="space-y-4">
-        <Campo rotulo="Link do vídeo">
-          <Texto
-            valor={p.video_url}
-            onChange={(v) => {
-              set('video_url', v.trim())
-              if (ehShorts(v)) set('video_vertical', true)
-            }}
-            placeholder="https://youtu.be/... ou https://www.youtube.com/watch?v=..."
-          />
-        </Campo>
-        {p.video_url && !id && <p className="text-sm font-semibold text-rose-600">Não reconheci esse link. Copie o endereço pelo botão "Compartilhar" do YouTube.</p>}
-        {id && (
-          <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-            <img src={`https://i.ytimg.com/vi/${id}/mqdefault.jpg`} alt="" className="h-14 w-24 rounded-lg object-cover" />
-            <span>Vídeo reconhecido. Veja a prévia ao lado.</span>
-          </div>
-        )}
-        <div className="flex flex-wrap gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {[
-            { v: false, nome: 'Horizontal (16:9)' },
-            { v: true, nome: 'Vertical (Shorts / 9:16)' },
+            { id: 'arquivo', nome: 'Arquivo de vídeo (MP4)', texto: 'Recomendado: o som sai garantido em todos os celulares.' },
+            { id: 'youtube', nome: 'Link do YouTube', texto: 'Em alguns celulares (principalmente iPhone) pode começar sem som.' },
           ].map((o) => (
-            <label key={o.nome} className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ring-2 ${p.video_vertical === o.v ? 'ring-rose-500' : 'ring-slate-200'}`}>
-              <input type="radio" name="formato" checked={p.video_vertical === o.v} onChange={() => set('video_vertical', o.v)} className="accent-rose-600" />
-              {o.nome}
-            </label>
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => setFonte(o.id)}
+              className={`rounded-2xl p-4 text-left ring-2 transition ${fonte === o.id ? 'bg-marca-50 ring-marca-500' : 'bg-white ring-slate-200 hover:ring-slate-300'}`}
+            >
+              <span className="block text-sm font-semibold">{o.nome}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-500">{o.texto}</span>
+            </button>
           ))}
         </div>
-        <div className="rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-600 ring-1 ring-slate-200">
-          <p className="font-semibold text-slate-800">No YouTube, antes de colar o link:</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4">
-            <li>
-              Em <b>Visibilidade</b>, escolha <b>Não listado</b> (o vídeo não aparece nas buscas, mas toca no quiz).
-            </li>
-            <li>
-              Em <b>Mais opções</b>, deixe marcado <b>Permitir incorporação</b>.
-            </li>
-            <li>O vídeo começa sem som (regra dos celulares); o ouvinte toca em "Ouvir com som".</li>
-          </ul>
-        </div>
+        {fonte === 'arquivo' && (
+          <div className="space-y-3">
+            <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-6 text-sm font-semibold text-slate-700 hover:border-marca-400 ${enviando ? 'opacity-60' : ''}`}>
+              {enviando ? <Loader2 size={18} className="animate-spin" /> : <Clapperboard size={18} />}
+              {enviando ? 'Enviando o vídeo…' : ehArquivoVideo(p.video_url) ? 'Trocar o vídeo' : 'Escolher o arquivo do vídeo'}
+              <input type="file" accept="video/mp4,video/quicktime" className="hidden" disabled={enviando} onChange={(e) => escolherArquivo(e.target.files?.[0])} />
+            </label>
+            {ehArquivoVideo(p.video_url) && !enviando && (
+              <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">Vídeo enviado. O tempo na tela foi ajustado para a duração dele. Veja a prévia ao lado.</p>
+            )}
+            {erro && <p className="text-sm font-semibold text-red-600">{erro}</p>}
+            <p className="text-xs leading-relaxed text-slate-500">
+              MP4 de até 20 MB. Para carregar rápido no 4G e gastar pouco da internet do ouvinte, prefira vídeos curtos (15 a 30 s) em 720p ou menos.
+            </p>
+          </div>
+        )}
+        {fonte === 'youtube' && (
+          <>
+          <Campo rotulo="Link do vídeo">
+            <Texto
+              valor={p.video_url}
+              onChange={(v) => {
+                set('video_url', v.trim())
+                if (ehShorts(v)) set('video_vertical', true)
+              }}
+              placeholder="https://youtu.be/... ou https://www.youtube.com/watch?v=..."
+            />
+          </Campo>
+          {p.video_url && !id && <p className="text-sm font-semibold text-marca-600">Não reconheci esse link. Copie o endereço pelo botão "Compartilhar" do YouTube.</p>}
+          {id && (
+            <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+              <img src={`https://i.ytimg.com/vi/${id}/mqdefault.jpg`} alt="" className="h-14 w-24 rounded-lg object-cover" />
+              <span>Vídeo reconhecido. Veja a prévia ao lado.</span>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3">
+            {[
+              { v: false, nome: 'Horizontal (16:9)' },
+              { v: true, nome: 'Vertical (Shorts / 9:16)' },
+            ].map((o) => (
+              <label key={o.nome} className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ring-2 ${p.video_vertical === o.v ? 'ring-marca-500' : 'ring-slate-200'}`}>
+                <input type="radio" name="formato" checked={p.video_vertical === o.v} onChange={() => set('video_vertical', o.v)} className="accent-marca-600" />
+                {o.nome}
+              </label>
+            ))}
+          </div>
+          <div className="rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-600 ring-1 ring-slate-200">
+            <p className="font-semibold text-slate-800">No YouTube, antes de colar o link:</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              <li>
+                Em <b>Visibilidade</b>, escolha <b>Não listado</b> (o vídeo não aparece nas buscas, mas toca no quiz).
+              </li>
+              <li>
+                Em <b>Mais opções</b>, deixe marcado <b>Permitir incorporação</b>.
+              </li>
+              <li>Se o celular bloquear o som do YouTube, aparece o botão "Ouvir com som". Para som garantido, use o arquivo MP4.</li>
+            </ul>
+          </div>
+          </>
+        )}
       </div>
     </Etapa>
   )
@@ -407,7 +472,7 @@ function ConteudoAutomatico({ p, set }) {
                   key={l.id}
                   type="button"
                   onClick={() => set('layout', l.id)}
-                  className={`overflow-hidden rounded-2xl bg-white text-left ring-2 transition hover:shadow-md ${p.layout === l.id ? 'ring-rose-500' : 'ring-slate-200'}`}
+                  className={`overflow-hidden rounded-2xl bg-white text-left ring-2 transition hover:shadow-md ${p.layout === l.id ? 'ring-marca-500' : 'ring-slate-200'}`}
                 >
                   <div className="pointer-events-none relative h-60 overflow-hidden bg-gradient-to-b from-slate-100 to-slate-50">
                     <div className="absolute left-1/2 top-4 w-[340px] origin-top -translate-x-1/2 scale-[0.62]">
@@ -416,7 +481,7 @@ function ConteudoAutomatico({ p, set }) {
                   </div>
                   <div className="p-3">
                     <p className="flex items-center gap-1.5 text-sm font-semibold">
-                      {p.layout === l.id && <Check size={14} className="text-rose-600" />} {l.nome}
+                      {p.layout === l.id && <Check size={14} className="text-marca-600" />} {l.nome}
                     </p>
                     <p className="text-[11px] leading-snug text-slate-500">{l.descricao}</p>
                   </div>

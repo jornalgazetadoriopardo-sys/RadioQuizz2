@@ -15,7 +15,7 @@ export default class ErroGeral extends Component {
         <p className="text-xl font-extrabold">Ops, algo deu errado</p>
         <p className="max-w-xs text-sm text-slate-600">Recarregue a página. Se continuar, avise a produção pelo WhatsApp da rádio.</p>
         <p className="max-w-xs break-words text-[11px] text-slate-400">{String(this.state.erro?.message ?? this.state.erro)}</p>
-        <button onClick={() => location.reload()} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-bold text-white">
+        <button onClick={() => location.reload()} className="rounded-xl bg-marca-600 px-5 py-3 text-sm font-bold text-white">
           Recarregar
         </button>
       </div>
