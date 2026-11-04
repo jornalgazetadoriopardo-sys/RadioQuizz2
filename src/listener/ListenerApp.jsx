@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bell, BellOff, Hand, CalendarClock, CheckCircle2, Clock, ChevronLeft, ChevronRight, Gift, History, LifeBuoy, LogOut, Radio, Trophy, XCircle } from 'lucide-react'
 import { RADIO } from '../config.js'
-import { Carregando, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
+import { Carregando, LinkAdmin, TelaCadastro, TelaLogin, TelaNome, useAuth } from '../auth.jsx'
 import { fmt, fmtHorario, hojeSP, nomeRodada, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { Avatar } from '../ui.jsx'
@@ -15,10 +15,14 @@ import { DetalheParticipacao, SeloSituacao, fmtDataHora } from '../historico.jsx
 // uma ação principal por tela e botões com texto (não só ícone).
 
 export default function ListenerApp() {
-  const { carregando: carregandoAuth, sessao, perfil } = useAuth()
+  const { carregando: carregandoAuth, sessao, perfil, anonimo } = useAuth()
   if (carregandoAuth) return <Carregando />
   if (!sessao) return <TelaLogin />
-  if (!perfil?.nome) return <TelaNome />
+  // Entrada de teste (só com o nome) não pede CPF; Google e e-mail pedem o cadastro completo uma vez
+  // (menos os administradores, que entram para conferir o app).
+  if (anonimo || perfil?.admin) {
+    if (!perfil?.nome) return <TelaNome />
+  } else if (!perfil?.cadastro_em) return <TelaCadastro />
   return <AppLogado />
 }
 
@@ -164,6 +168,7 @@ function Inicio({ irPara, eu }) {
           <LogOut size={22} /> Sair
         </button>
       </div>
+      <LinkAdmin className="pt-2 text-slate-300" />
     </div>
   )
 }

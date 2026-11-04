@@ -18,7 +18,7 @@ export const SUPABASE = {
 // google: precisa ativar o provedor Google no painel do Supabase antes de ligar.
 // anonimo ("entrar só com o nome"): precisa ativar "Anonymous sign-ins" no Supabase. Só para a fase de testes.
 export const LOGIN = {
-  google: false,
+  google: true,
   email: true,
   anonimo: true,
 }

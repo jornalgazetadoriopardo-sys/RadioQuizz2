@@ -34,19 +34,52 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
 - `013_imagem_pergunta.sql` — imagem opcional em cada pergunta (ex.: "Quem é este cantor?"). Precisa do 012.
 - `014_permissoes_arquivos.sql` — permissões para o painel enviar imagens e vídeos (corrige o erro
   "new row violates row-level security policy" ao enviar arquivos).
+- `015_cadastro.sql` — cadastro do ouvinte com CPF (conferido e um por conta) e WhatsApp, e a aba **Cadastros**
+  do painel. Antes de rodar, avise a equipe de testes: quem entrou com e-mail vai precisar completar o cadastro.
 
 ## 2. Ligar as formas de login
-Em **Authentication → Sign In / Providers**:
-- **Allow anonymous sign-ins**: ligue. É o botão "Entrar só com o nome (teste)" — o jeito mais rápido para a equipe testar.
-- **Email**: já vem ligado. Atenção: o envio de e-mail padrão do Supabase só entrega para membros da equipe
-  do projeto no Supabase e tem limite de poucos e-mails por hora. Para liberar o login por e-mail para qualquer pessoa,
-  configure um SMTP próprio em **Authentication → Emails → SMTP Settings** (ex.: Resend, que tem plano gratuito).
-- (Opcional) Para o login também aceitar um **código de 6 dígitos**, em **Authentication → Emails → Magic Link**
-  acrescente `{{ .Token }}` no texto do e-mail.
+O ouvinte entra com **Google** ou com **e-mail e código**, e na primeira vez completa o cadastro (nome, CPF e
+WhatsApp, rode antes o `015_cadastro.sql`). O botão discreto "Entrar só com o nome (teste)" continua para a equipe.
 
+### Endereço do site
 Em **Authentication → URL Configuration**:
-- **Site URL**: o endereço do Netlify (ex.: `https://quiz-difusora.netlify.app`).
-- **Redirect URLs**: adicione o mesmo endereço e também `http://localhost:5173` (para desenvolvimento).
+- **Site URL**: `https://quiz.difusora.fm.br`
+- **Redirect URLs**: adicione `https://quiz.difusora.fm.br/**` (e `http://localhost:5173/**` para desenvolvimento).
+
+### Google (uma vez só)
+1. Entre em **console.cloud.google.com** com o Gmail da rádio e crie um projeto (ex.: "Quiz Difusora").
+2. **APIs e serviços → Tela de consentimento OAuth** (ou "Google Auth Platform → Branding"):
+   - Tipo de usuário **Externo**; nome do app **Pergunta da Hora – Difusora**; e-mail de suporte da rádio; logotipo.
+   - Página inicial: `https://quiz.difusora.fm.br`
+   - Política de privacidade: `https://quiz.difusora.fm.br/privacidade.html` (revise e complete o texto desse
+     arquivo, em `public/privacidade.html`, com o e-mail e o telefone da rádio).
+   - Domínio autorizado: `difusora.fm.br`
+   - Permissões (escopos): só os básicos — `email`, `profile`, `openid`.
+   - Em **Público-alvo / Publishing status**, clique em **Publicar app** (sai do modo "Teste"; sem isso só
+     entram os e-mails cadastrados como testadores).
+3. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth**:
+   - Tipo: **Aplicativo da Web**.
+   - Origens JavaScript autorizadas: `https://quiz.difusora.fm.br`
+   - URIs de redirecionamento autorizados: `https://sxhwkkplxaotpxtgbzqe.supabase.co/auth/v1/callback`
+   - Copie o **ID do cliente** e a **Chave secreta do cliente**.
+4. No Supabase, **Authentication → Sign In / Providers → Google**: ligue, cole o ID do cliente e a chave secreta e salve.
+   (A chave secreta fica só no Supabase; nunca coloque no código.)
+
+O Google não deixa fazer login dentro do navegador do Facebook, Instagram ou WhatsApp. O app percebe isso e mostra
+"Abrir no Chrome" (Android) ou a instrução para abrir no Safari (iPhone).
+
+### E-mail com código
+- **Email** já vem ligado em **Sign In / Providers**.
+- Em **Authentication → Emails → Magic Link**, troque o texto do e-mail para mostrar o código, por exemplo:
+  `<h2>Seu código de acesso ao quiz</h2><p style="font-size:28px"><b>{{ .Token }}</b></p><p>Ou toque: <a href="{{ .ConfirmationURL }}">entrar no quiz</a></p>`
+  Faça o mesmo em **Confirm signup** (primeiro acesso de um e-mail novo).
+- O envio padrão do Supabase só entrega para membros da equipe do projeto e poucos e-mails por hora. Para liberar
+  para todos, configure um SMTP próprio em **Authentication → Emails → SMTP Settings** (ex.: Resend, plano gratuito,
+  com o domínio `difusora.fm.br`).
+
+### Teste
+- **Allow anonymous sign-ins** ligado: é o "Entrar só com o nome (teste)". Essas contas não pedem CPF e não
+  aparecem em **Painel Admin → Cadastros**. Desligue quando não precisar mais.
 
 ## 3. Tornar alguém administrador
 **Jeito recomendado (não depende de envio de e-mail):**

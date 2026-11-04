@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   BarChart3, Bell, Clock, Dices, Send, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
-  ShieldAlert, Square, Trash2, Trophy, Zap,
+  ShieldAlert, Square, Trash2, Trophy, Users, Eye, EyeOff, MessageCircle, Zap,
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
 import { Carregando, TelaLogin, useAuth } from '../auth.jsx'
@@ -19,6 +19,7 @@ const ABAS = [
   { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Anúncios simples, vídeos do YouTube ou montados automaticamente.', cor: 'bg-ouro-100 text-ouro-600' },
   { id: 'premios', grupo: 'Conteúdo', nome: 'Prêmios', icone: Gift, descricao: 'O que os primeiros colocados do ranking ganham.', cor: 'bg-emerald-100 text-emerald-600' },
   { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação dos ouvintes pelos pontos.', cor: 'bg-ouro-100 text-ouro-600' },
+  { id: 'cadastros', grupo: 'Ouvintes', nome: 'Cadastros', icone: Users, descricao: 'Ouvintes cadastrados: nome, e-mail, CPF e WhatsApp.', cor: 'bg-violet-100 text-violet-600' },
   { id: 'historico', grupo: 'Ouvintes', nome: 'Histórico', icone: History, descricao: 'Todas as participações, para conferir reclamações.', cor: 'bg-sky-100 text-sky-600' },
   { id: 'feedback', grupo: 'Ouvintes', nome: 'Feedback', icone: MessageSquare, descricao: 'Problemas e sugestões enviados pelo app.', cor: 'bg-slate-100 text-slate-600' },
   { id: 'avisos', grupo: 'Comunicação', nome: 'Avisos', icone: Bell, descricao: 'Notificações no celular: automáticas, agendadas e avulsas.', cor: 'bg-marca-100 text-marca-600' },
@@ -176,6 +177,7 @@ function Painel() {
           {aba === 'premios' && <Premios />}
           {aba === 'ranking' && <RankingAdmin />}
           {aba === 'historico' && <HistoricoAdmin />}
+          {aba === 'cadastros' && <CadastrosAdmin />}
           {aba === 'avisos' && <AvisosAdmin />}
           {aba === 'feedback' && <FeedbackAdmin />}
         </div>
@@ -941,6 +943,77 @@ function FeedbackAdmin() {
           {f.navegador && <p className="mt-1 truncate text-[11px] text-slate-400">{f.navegador}</p>}
         </div>
       ))}
+    </Card>
+  )
+}
+
+/* ---------- aba Cadastros ---------- */
+
+const fmtCpf = (c) => (c ? `${c.slice(0, 3)}.${c.slice(3, 6)}.${c.slice(6, 9)}-${c.slice(9)}` : '')
+const cpfEscondido = (c) => (c ? `***.${c.slice(3, 6)}.${c.slice(6, 9)}-**` : '')
+const fmtZap = (z) => (z ? (z.length === 11 ? `(${z.slice(0, 2)}) ${z.slice(2, 7)}-${z.slice(7)}` : `(${z.slice(0, 2)}) ${z.slice(2, 6)}-${z.slice(6)}`) : '')
+
+/** Lista dos ouvintes cadastrados. O CPF aparece escondido; o olho mostra o número inteiro (ex.: entrega de prêmio). */
+function CadastrosAdmin() {
+  const { itens, erro } = useTabela(() =>
+    supabase.from('perfis').select('id, nome, email, cpf, whatsapp, cadastro_em, criado_em').eq('admin', false).not('cadastro_em', 'is', null).order('cadastro_em', { ascending: false }),
+  )
+  const [busca, setBusca] = useState('')
+  const [visivel, setVisivel] = useState(null)
+  if (erro) return <p className="text-sm text-red-600">{erro}</p>
+  if (!itens) return <Carregando />
+
+  const termo = busca.trim().toLowerCase()
+  const numeros = termo.replace(/\D/g, '')
+  const lista = termo
+    ? itens.filter((p) => p.nome.toLowerCase().includes(termo) || (p.email ?? '').toLowerCase().includes(termo) || (numeros.length >= 3 && ((p.cpf ?? '').includes(numeros) || (p.whatsapp ?? '').includes(numeros))))
+    : itens
+
+  const exportar = () => {
+    const linhas = [['Nome', 'E-mail', 'CPF', 'WhatsApp', 'Cadastrado em'], ...itens.map((p) => [p.nome, p.email ?? '', fmtCpf(p.cpf), fmtZap(p.whatsapp), fmtDataHora(p.cadastro_em)])]
+    const csv = linhas.map((l) => l.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `cadastros-quiz-${hojeBR()}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
+        <Campo rotulo="Buscar (nome, e-mail, CPF ou WhatsApp)" className="min-w-56 flex-1">
+          <Texto valor={busca} onChange={setBusca} placeholder="Ex.: Maria ou 19999" />
+        </Campo>
+        <Botao type="button" variante="secundario" disabled={!itens.length} onClick={exportar}>
+          <Download size={15} /> Exportar planilha
+        </Botao>
+      </div>
+      <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
+        {itens.length} ouvinte(s) cadastrado(s). Dados pessoais (LGPD): use só para o quiz e a entrega de prêmios. Contas de teste não aparecem aqui.
+      </p>
+      {lista.length === 0 && <Vazio icone={Users} titulo="Nenhum cadastro encontrado" texto="Os ouvintes aparecem aqui depois de completar o cadastro no app." className="m-4 shadow-none ring-0" />}
+      <div className="divide-y divide-slate-100">
+        {lista.map((p) => (
+          <div key={p.id} className="flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3 text-sm">
+            <div className="min-w-48 flex-1">
+              <p className="font-semibold">{p.nome}</p>
+              <p className="text-xs text-slate-500">{p.email}</p>
+            </div>
+            <span className="flex items-center gap-1.5 font-mono text-xs text-slate-700">
+              {visivel === p.id ? fmtCpf(p.cpf) : cpfEscondido(p.cpf)}
+              <button type="button" title={visivel === p.id ? 'Esconder CPF' : 'Mostrar CPF'} onClick={() => setVisivel(visivel === p.id ? null : p.id)} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                {visivel === p.id ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </span>
+            <a href={`https://wa.me/55${p.whatsapp}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:underline">
+              <MessageCircle size={14} /> {fmtZap(p.whatsapp)}
+            </a>
+            <span className="text-xs text-slate-400">desde {fmtDataHora(p.cadastro_em)}</span>
+          </div>
+        ))}
+      </div>
     </Card>
   )
 }
