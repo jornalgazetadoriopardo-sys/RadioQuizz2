@@ -100,7 +100,7 @@ export function TelaLogin({ admin = false }) {
       <p className="mt-3 text-xl leading-snug text-white">
         {admin
           ? 'Entre com o e-mail cadastrado como administrador.'
-          : `Ouça a ${RADIO.nome} ${RADIO.frequencia}, responda as perguntas do locutor e concorra a prêmios toda semana!`}
+          : `Ouça a ${RADIO.nome} ${RADIO.frequencia}, responda as perguntas e concorra a prêmios!`}
       </p>
 
       <div className="mt-8 space-y-3">

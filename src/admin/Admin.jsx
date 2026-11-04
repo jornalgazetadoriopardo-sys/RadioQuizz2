@@ -10,15 +10,15 @@ import { mensagemDeErro, supabase } from '../supabase.js'
 import { diferencaDoAparelhoMs, fmtFalta, fmtHora, instanteRodada, relogioSincronizado, useRelogio } from '../relogio.js'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
 import { Avatar, CORES, Card, ICONES_PATROCINADOR, Icone, Selo, Vazio } from '../ui.jsx'
-import { Botao, Campo, Numero, Texto, inputCls, useTabela } from './comum.jsx'
+import { Botao, Campo, Numero, Texto, enviarImagem, inputCls, reduzirFoto, useTabela } from './comum.jsx'
 import Patrocinadores from './Patrocinadores.jsx'
 
 const ABAS = [
   { id: 'aovivo', grupo: 'Programa', nome: 'Ao vivo', icone: RadioTower, descricao: 'Solte as perguntas no ar e acompanhe as respostas em tempo real.', cor: 'bg-marca-100 text-marca-600' },
   { id: 'rodadas', grupo: 'Conteúdo', nome: 'Rodadas', icone: ListChecks, descricao: 'Perguntas, horários, pontos e agendamento de cada rodada.', cor: 'bg-violet-100 text-violet-600' },
   { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Anúncios simples, vídeos do YouTube ou montados automaticamente.', cor: 'bg-ouro-100 text-ouro-600' },
-  { id: 'premios', grupo: 'Conteúdo', nome: 'Prêmios', icone: Gift, descricao: 'O que os primeiros colocados da semana ganham.', cor: 'bg-emerald-100 text-emerald-600' },
-  { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação da semana. Recomeça toda segunda-feira.', cor: 'bg-ouro-100 text-ouro-600' },
+  { id: 'premios', grupo: 'Conteúdo', nome: 'Prêmios', icone: Gift, descricao: 'O que os primeiros colocados do ranking ganham.', cor: 'bg-emerald-100 text-emerald-600' },
+  { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação dos ouvintes pelos pontos.', cor: 'bg-ouro-100 text-ouro-600' },
   { id: 'historico', grupo: 'Ouvintes', nome: 'Histórico', icone: History, descricao: 'Todas as participações, para conferir reclamações.', cor: 'bg-sky-100 text-sky-600' },
   { id: 'feedback', grupo: 'Ouvintes', nome: 'Feedback', icone: MessageSquare, descricao: 'Problemas e sugestões enviados pelo app.', cor: 'bg-slate-100 text-slate-600' },
   { id: 'avisos', grupo: 'Comunicação', nome: 'Avisos', icone: Bell, descricao: 'Notificações no celular: automáticas, agendadas e avulsas.', cor: 'bg-marca-100 text-marca-600' },
@@ -295,7 +295,7 @@ function AoVivo() {
             ocupado={ocupado === 'encerrar'}
           />
         ) : (
-          <Vazio icone={RadioTower} titulo="Nenhuma rodada no ar" texto='Escolha uma rodada ao lado e clique em "No ar" quando o locutor anunciar, ou deixe o agendamento abrir sozinho.' />
+          <Vazio icone={RadioTower} titulo="Nenhuma rodada no ar" texto='Escolha uma rodada ao lado e clique em "No ar", ou deixe o agendamento abrir sozinho.' />
         )}
         {erro && <p className="text-sm font-semibold text-red-600">{erro}</p>}
         {avisoMsg && <p className="text-sm font-semibold text-emerald-700">Aviso: {avisoMsg}</p>}
@@ -628,6 +628,52 @@ function validarAgenda(r) {
   return ''
 }
 
+/** Imagem opcional da pergunta (ex.: "Quem é este cantor?"). Só chega ao ouvinte junto com a pergunta. */
+function ImagemPergunta({ url, aoMudar }) {
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState('')
+  const escolher = async (arquivo) => {
+    if (!arquivo) return
+    setErro('')
+    setEnviando(true)
+    try {
+      aoMudar(await enviarImagem(await reduzirFoto(arquivo), 'perguntas'))
+    } catch (e) {
+      setErro(e.message)
+    }
+    setEnviando(false)
+  }
+  return (
+    <div className="sm:col-span-6">
+      <span className="mb-1.5 block text-xs font-semibold text-slate-600">Imagem da pergunta (opcional)</span>
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="group relative grid h-28 w-40 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-marca-400">
+          {enviando ? (
+            <Loader2 className="animate-spin text-marca-600" />
+          ) : url ? (
+            <img src={url} alt="" className="h-full w-full object-contain" />
+          ) : (
+            <span className="flex flex-col items-center gap-1 text-xs font-semibold text-slate-500 group-hover:text-marca-600">
+              <ImagePlus size={26} /> Escolher imagem
+            </span>
+          )}
+          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={enviando} onChange={(e) => escolher(e.target.files?.[0])} />
+        </label>
+        <div className="min-w-0 flex-1 space-y-2 text-xs leading-relaxed text-slate-500">
+          <p>Para perguntas como "Quem é este cantor?" ou "Que lugar é este?". A imagem só aparece para o ouvinte junto com a pergunta.</p>
+          <p>Fotos grandes são diminuídas sozinhas para carregar rápido no celular.</p>
+          {url && !enviando && (
+            <Botao type="button" variante="perigo" className="px-3 py-1.5 text-xs" onClick={() => aoMudar(null)}>
+              <Trash2 size={14} /> Tirar a imagem
+            </Botao>
+          )}
+          {erro && <p className="font-semibold text-red-600">{erro}</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Rodadas() {
   const { itens, recarregar } = useTabela(() => supabase.from('rodadas').select('*, rodadas_conteudo(*)').order('data', { ascending: true, nullsFirst: true }).order('horario'))
   // Junta a parte pública e a secreta da rodada num único formulário.
@@ -636,6 +682,7 @@ function Rodadas() {
     return {
     ...r,
     pergunta: c?.pergunta ?? '',
+    imagem_url: c?.imagem_url ?? null,
     alternativas: c?.alternativas ?? ['', '', '', ''],
     correta: c?.correta ?? 0,
     explicacao: c?.explicacao ?? '',
@@ -656,7 +703,7 @@ function Rodadas() {
     if (error) throw error
     const { error: e2 } = await supabase
       .from('rodadas_conteudo')
-      .upsert({ rodada_id: r.id, pergunta: r.pergunta, alternativas: r.alternativas, correta: r.correta, explicacao: r.explicacao })
+      .upsert({ rodada_id: r.id, pergunta: r.pergunta, imagem_url: r.imagem_url || null, alternativas: r.alternativas, correta: r.correta, explicacao: r.explicacao })
     if (e2) throw e2
   }
 
@@ -679,6 +726,7 @@ function Rodadas() {
         pontos: 50,
         tempo_resposta: 15,
         pergunta: '',
+        imagem_url: null,
         alternativas: ['', '', '', ''],
         correta: 0,
         explicacao: '',
@@ -792,6 +840,7 @@ function Rodadas() {
           <Campo rotulo="Pergunta (só aparece depois do anúncio)" className="sm:col-span-6">
             <Texto multilinha valor={r.pergunta} onChange={(v) => set('pergunta', v)} />
           </Campo>
+          <ImagemPergunta url={r.imagem_url} aoMudar={(v) => set('imagem_url', v)} />
           <div className="space-y-2 sm:col-span-6">
             <span className="block text-xs font-semibold text-slate-600">Alternativas (marque a correta)</span>
             {r.alternativas.map((alt, i) => (
@@ -858,10 +907,9 @@ function RankingAdmin() {
   return (
     <Card>
       <div className="border-b border-slate-100 p-4">
-        <p className="font-semibold">Ranking da semana</p>
-        <p className="text-xs text-slate-500">Recomeça automaticamente toda segunda-feira à 0h (horário de Brasília).</p>
+        <p className="font-semibold">Ranking</p>
       </div>
-      {ranking.length === 0 && <Vazio icone={Trophy} titulo="Ninguém pontuou nesta semana" texto="O ranking aparece aqui assim que alguém acertar uma pergunta." className="m-4 shadow-none ring-0" />}
+      {ranking.length === 0 && <Vazio icone={Trophy} titulo="Ninguém pontuou ainda" texto="O ranking aparece aqui assim que alguém acertar uma pergunta." className="m-4 shadow-none ring-0" />}
       <div className="divide-y divide-slate-100">
         {ranking.map((o) => (
           <div key={o.posicao} className="flex items-center gap-3 px-4 py-2.5">
@@ -1286,10 +1334,10 @@ function MensagemAvulsa({ perfil, inscritos, aoEnviar }) {
   return (
     <Card className="p-5">
       <p className="font-semibold">Mensagem avulsa</p>
-      <p className="text-xs text-slate-500">Texto livre, enviado na hora ou agendado. Ex.: "Saiu o ranking da semana!", "Hoje tem pergunta especial às 11h".</p>
+      <p className="text-xs text-slate-500">Texto livre, enviado na hora ou agendado. Ex.: "Saiu o ranking!", "Hoje tem pergunta especial às 11h".</p>
       <form onSubmit={enviar} className="mt-4 space-y-3">
         <Campo rotulo={`Título (${titulo.length}/80)`}>
-          <Texto valor={titulo} onChange={(v) => setTitulo(v.slice(0, 80))} placeholder="Saiu o ranking da semana!" />
+          <Texto valor={titulo} onChange={(v) => setTitulo(v.slice(0, 80))} placeholder="Saiu o ranking!" />
         </Campo>
         <Campo rotulo={`Mensagem (${corpo.length}/240)`}>
           <Texto multilinha valor={corpo} onChange={(v) => setCorpo(v.slice(0, 240))} placeholder="Abra o quiz e veja quem está concorrendo à Smart TV." />
