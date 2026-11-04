@@ -10,6 +10,11 @@ Projeto: `sxhwkkplxaotpxtgbzqe` — painel em https://supabase.com/dashboard/pro
    (cria 6 rodadas, 4 patrocinadores e 3 prêmios de exemplo — tudo editável depois pelo Painel Admin).
 
 ### Atualizações do banco
+**Jeito mais fácil:** rode o arquivo [`supabase/ATUALIZAR-BANCO.sql`](supabase/ATUALIZAR-BANCO.sql), que junta
+todas as atualizações de 005 a 015 e pode ser rodado mais de uma vez. No fim ele mostra uma tabela com OK em cada parte.
+Pelo celular, abra o link "raw" do arquivo no GitHub, selecione tudo, copie e cole no SQL Editor.
+
+Ou rode cada arquivo novo, na ordem do número:
 Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse arquivo no **SQL Editor**, na ordem do número:
 - `003_pontuacao_fixa.sql` — quem acerta ganha o valor cheio da rodada (sem bônus por velocidade).
 - `004_historico.sql` — histórico de participações com protocolo (auditoria para reclamações).
