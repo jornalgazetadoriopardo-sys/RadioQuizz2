@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Eye, Hand, Loader2, RadioTower, Send, Volume2, X } from 'lucide-react'
+import { Check, Eye, Hand, Loader2, RadioTower, Send, X } from 'lucide-react'
 import { DURACOES } from '../config.js'
 import { fmt, nomeRodada, useDados } from '../store.jsx'
 import { TextoProxima } from './TextoProxima.jsx'
@@ -9,13 +9,12 @@ import { PecaAnuncio, liberarVideos } from '../anuncios.jsx'
 import { agoraServidor, instanteRodada, useRelogio } from '../relogio.js'
 
 // Fluxo de uma rodada:
-//   confirmar ("Vou participar", com o relógio da rodada) → preparar (3, 2, 1) → anuncio1 → pergunta
+//   confirmar ("Vou participar", com o relógio da rodada) → anuncio1 (começa no toque; a contagem vai até a
+//   hora em que a pergunta abre para todos) → pergunta
 //   → enviada ("Confira sua resposta") → anuncio2 → resultado
 // Os toques em "Vou participar" e "Confira sua resposta" são o que permite ao navegador tocar o vídeo já com som.
 // Ao confirmar, o servidor guarda a vaga: quem entrou com a rodada no ar responde mesmo que ela feche durante o anúncio.
 // O servidor marca a hora em que a pergunta abriu e confere a resposta (ver supabase/migrations).
-// Rodada sem relógio (manual, ou reaberta depois do horário): contagem curta antes do vídeo
-const SEGUNDOS_PREPARAR = 3
 
 /** Fim do tempo para confirmar: o encerramento da rodada automática (null se não tiver relógio). */
 function fimDaEntrada(rodada) {
@@ -29,9 +28,8 @@ export default function Rodada({ aoSair }) {
   // Fixa a rodada ao entrar, mesmo que o admin troque a rodada no ar no meio do caminho.
   const [rodada] = useState(rodadaNoAr)
   const [etapa, setEtapa] = useState('confirmar')
-  const [entrada, setEntrada] = useState(null) // null → 'enviando' → 'ok'
-  const [preparado, setPreparado] = useState(false)
-  const [inicioVideo, setInicioVideo] = useState(null)
+  const [abrePergunta, setAbrePergunta] = useState(null) // instante em que a pergunta abre para todos
+  const entrada = useRef(null) // pedido da vaga ao servidor (a pergunta só abre depois dele)
   const [pergunta, setPergunta] = useState(null)
   const [resultado, setResultado] = useState(null)
   const [erro, setErro] = useState('')
@@ -41,11 +39,6 @@ export default function Rodada({ aoSair }) {
     const i = Math.max(0, rodadas.findIndex((r) => r.id === rodada?.id))
     return [patrocinadores[i % patrocinadores.length], patrocinadores[(i + 1) % patrocinadores.length]]
   }, [patrocinadores, rodadas, rodada])
-
-  // Fim da contagem 3, 2, 1 com a vaga confirmada → começa o anúncio
-  useEffect(() => {
-    if (etapa === 'preparar' && preparado && entrada === 'ok') setEtapa('anuncio1')
-  }, [etapa, preparado, entrada])
 
   if (!rodada) return <Mensagem texto="Nenhuma pergunta no ar agora." aoSair={aoSair} />
 
@@ -59,23 +52,33 @@ export default function Rodada({ aoSair }) {
     return data
   }
 
-  // "Vou participar": guarda a vaga no servidor enquanto a contagem 3, 2, 1 corre
-  // O relógio continua até o fim do tempo da rodada: todos começam o vídeo e a pergunta juntos
-  const participar = async () => {
+  // "Vou participar": o anúncio começa no próprio toque (é o que libera o som, inclusive no iPhone).
+  // A pergunta abre para todos no mesmo instante: fim do tempo da rodada + duração do anúncio.
+  const segundosAnuncio1 = curto ?? patrocinador1?.duracao_segundos ?? DURACOES.anuncioPergunta
+  const participar = () => {
     liberarVideos() // precisa ser no próprio toque, antes de qualquer espera
+    const agora = agoraServidor().getTime()
     const fim = fimDaEntrada(rodada)
-    setInicioVideo(fim && fim - agoraServidor() > 1000 ? fim : new Date(agoraServidor().getTime() + SEGUNDOS_PREPARAR * 1000))
-    setEtapa('preparar')
-    setEntrada('enviando')
-    const { error } = await supabase.rpc('entrar_na_rodada', { p_rodada: rodada.id })
-    if (error?.message.includes('ja_respondida')) return (await responder(null)) && setEtapa('resultado')
-    // banco sem o 011 ainda: segue como antes
-    if (error && !/entrar_na_rodada|schema cache|function/i.test(error.message)) return setErro(mensagemDeErro(error))
-    setEntrada('ok')
+    const base = fim && fim.getTime() > agora ? fim.getTime() : agora
+    setAbrePergunta(new Date(base + segundosAnuncio1 * 1000))
+    setEtapa('anuncio1')
+    entrada.current = supabase.rpc('entrar_na_rodada', { p_rodada: rodada.id }).then(async ({ error }) => {
+      if (error?.message.includes('ja_respondida')) {
+        if (await responder(null)) setEtapa('resultado')
+        return false
+      }
+      // banco sem o 011 ainda: segue como antes
+      if (error && !/entrar_na_rodada|schema cache|function/i.test(error.message)) {
+        setErro(mensagemDeErro(error))
+        return false
+      }
+      return true
+    })
   }
 
   const abrirPergunta = async () => {
     setEtapa('abrindo')
+    if (entrada.current && !(await entrada.current)) return
     const { data, error } = await supabase.rpc('abrir_pergunta', { p_rodada: rodada.id })
     if (error) {
       // Já respondeu (ex.: fechou o app no meio): mostra o resultado que ficou registrado.
@@ -91,16 +94,15 @@ export default function Rodada({ aoSair }) {
   return (
     <div className="no-scrollbar h-full overflow-y-auto bg-slate-50 px-4 pb-8 pt-5">
       {etapa === 'confirmar' && <Confirmar rodada={rodada} aoParticipar={participar} aoSair={aoSair} />}
-      {etapa === 'preparar' && <Preparar alvo={inicioVideo} aoTerminar={() => setPreparado(true)} esperando={preparado && entrada !== 'ok'} />}
-      {['confirmar', 'preparar', 'anuncio1'].includes(etapa) && (
+      {['confirmar', 'anuncio1'].includes(etapa) && (
         <Anuncio
           key="a1"
           ativo={etapa === 'anuncio1'}
-          segundos={curto ?? patrocinador1?.duracao_segundos ?? DURACOES.anuncioPergunta}
+          ate={abrePergunta}
           patrocinador={patrocinador1}
           aoTerminar={abrirPergunta}
           titulo="Fique nesta tela"
-          texto="A pergunta aparece logo depois deste anúncio."
+          texto="A pergunta abre para todos ao mesmo tempo."
           cor="marca"
         />
       )}
@@ -187,40 +189,6 @@ function Confirmar({ rodada, aoParticipar, aoSair }) {
   )
 }
 
-/** Depois do "Vou participar": o relógio continua até a hora marcada e aí começa o vídeo. */
-function Preparar({ alvo, aoTerminar, esperando }) {
-  const [agora, setAgora] = useState(agoraServidor)
-  const total = useRef(Math.max(1, alvo - agoraServidor()))
-  const terminou = useRef(false)
-  useEffect(() => {
-    // confere 5 vezes por segundo, pelo relógio do servidor, para todos os celulares virarem juntos
-    const t = setInterval(() => setAgora(agoraServidor()), 200)
-    return () => clearInterval(t)
-  }, [])
-  const falta = alvo - agora
-  useEffect(() => {
-    if (falta <= 0 && !terminou.current) {
-      terminou.current = true
-      aoTerminar()
-    }
-  }, [falta, aoTerminar])
-  return (
-    <div className="flex min-h-full flex-col items-center justify-center text-center animate-fade-up">
-      <p className="text-2xl font-extrabold text-emerald-700">Você está participando!</p>
-      <Relogio
-        valor={esperando ? <Loader2 size={64} className="animate-spin" /> : Math.max(0, Math.ceil(falta / 1000))}
-        fracao={Math.max(0, falta) / total.current}
-        legenda="segundos para o vídeo começar"
-        cor="emerald"
-      />
-      <p className="mt-6 text-lg text-slate-700">Todos os participantes começam juntos.</p>
-      <p className="mt-2 flex items-center gap-2 text-lg text-slate-700">
-        <Volume2 size={24} className="text-marca-700" /> Deixe o som do celular ligado
-      </p>
-    </div>
-  )
-}
-
 /** Resposta enviada → botão "Confira sua resposta" (o toque libera o som do vídeo seguinte). */
 function Enviada({ aoConferir }) {
   return (
@@ -291,9 +259,11 @@ function BotaoGrande({ className = 'bg-slate-900 text-white', children, ...props
  * Anúncio entre as etapas. Fica montado (escondido) desde a etapa anterior para o vídeo já estar carregado
  * quando chegar a vez dele; a contagem só começa quando `ativo`.
  */
-function Anuncio({ ativo, segundos, patrocinador, aoTerminar, titulo, texto, cor }) {
-  // termina no fim da contagem ou quando o vídeo acabar, o que vier primeiro
+function Anuncio({ ativo, segundos, ate, patrocinador, aoTerminar, titulo, texto, cor }) {
+  // Com `segundos`: termina no fim da contagem ou quando o vídeo acabar, o que vier primeiro.
+  // Com `ate`: termina na hora marcada (relógio do servidor), igual para todos; se o vídeo acabar antes, aguarda.
   const terminou = useRef(false)
+  const [videoAcabou, setVideoAcabou] = useState(false)
   const terminar = () => {
     if (terminou.current || !ativo) return
     terminou.current = true
@@ -301,10 +271,57 @@ function Anuncio({ ativo, segundos, patrocinador, aoTerminar, titulo, texto, cor
   }
   return (
     <div className={ativo ? 'flex min-h-full flex-col animate-fade-up' : 'hidden'} aria-hidden={!ativo}>
-      {ativo && <ContagemAnuncio segundos={segundos} aoTerminar={terminar} titulo={titulo} texto={texto} cor={cor} />}
+      {ativo &&
+        (ate ? (
+          <ContagemAte ate={ate} aoTerminar={terminar} titulo={titulo} texto={texto} cor={cor} />
+        ) : (
+          <ContagemAnuncio segundos={segundos} aoTerminar={terminar} titulo={titulo} texto={texto} cor={cor} />
+        ))}
       <div className="flex flex-1 flex-col justify-center gap-4 py-6">
-        <p className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
-        <PecaAnuncio p={patrocinador} comSom tocar={ativo} aoTerminarVideo={terminar} />
+        {videoAcabou ? (
+          <div className="rounded-3xl bg-white p-8 text-center ring-2 ring-slate-200">
+            <Loader2 className="mx-auto animate-spin text-marca-600" size={40} />
+            <p className="mt-4 text-2xl font-extrabold text-slate-900">Prepare-se!</p>
+            <p className="mt-1 text-lg text-slate-700">A pergunta já vai abrir.</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
+            <PecaAnuncio p={patrocinador} comSom tocar={ativo} aoTerminarVideo={ate ? () => ativo && setVideoAcabou(true) : terminar} />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Contagem até um instante (relógio do servidor), para todos os celulares virarem juntos. */
+function ContagemAte({ ate, aoTerminar, titulo, texto, cor }) {
+  const [agora, setAgora] = useState(agoraServidor)
+  const total = useRef(Math.max(1, ate - agoraServidor()))
+  useEffect(() => {
+    const t = setInterval(() => setAgora(agoraServidor()), 200)
+    return () => clearInterval(t)
+  }, [])
+  const falta = ate - agora
+  useEffect(() => {
+    if (falta <= 0) aoTerminar()
+  }, [falta, aoTerminar])
+  const fracao = Math.max(0, falta) / total.current
+  const aviso = cor === 'emerald' ? 'bg-emerald-600' : 'bg-marca-600'
+  return (
+    <div className={`rounded-3xl p-4 text-white ${aviso}`}>
+      <div className="flex items-center gap-4">
+        <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-white text-4xl font-extrabold tabular-nums text-slate-900">
+          {Math.max(0, Math.ceil(falta / 1000))}
+        </div>
+        <div>
+          <p className="text-2xl font-extrabold leading-tight">{titulo}</p>
+          <p className="mt-1 text-lg leading-snug">{texto}</p>
+        </div>
+      </div>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/25">
+        <div className="h-full rounded-full bg-white transition-[width] duration-200 ease-linear" style={{ width: `${(1 - fracao) * 100}%` }} />
       </div>
     </div>
   )
