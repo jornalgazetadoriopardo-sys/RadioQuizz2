@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { AtSign, Globe, ImageIcon, MapPin, MessageCircle, Phone, Volume2, Zap } from 'lucide-react'
 import { CORES, Icone } from './ui.jsx'
+import { hojeSP } from './store.jsx'
+import { agoraServidor } from './relogio.js'
+import { contarExibicao } from './exibicoes.js'
 
 // Peças de anúncio dos patrocinadores. Tudo é desenhado pelo próprio app (sem API externa):
 //   simples    → logo/ícone + frase
@@ -492,7 +495,40 @@ export function PecaAnuncio({ p, comSom = false, tocar = true, aoTerminarVideo }
   return <AnuncioSimples p={p} />
 }
 
-/* ---------- banner rotativo (tela inicial) ---------- */
+/* ---------- espaços e rodízio ---------- */
+
+export const ESPACOS = [
+  { id: 'anuncio_pergunta', nome: 'Anúncio antes da pergunta', texto: 'Vídeo ou anúncio depois de "Vou participar".' },
+  { id: 'anuncio_resultado', nome: 'Anúncio antes do resultado', texto: 'Vídeo ou anúncio depois de "Confira sua resposta".' },
+  { id: 'banner_inicio', nome: 'Banner da tela inicial', texto: 'O banner que gira na tela inicial do app.' },
+  { id: 'banner_espera', nome: 'Banner das telas de espera', texto: 'A faixa embaixo das telas de espera e do resultado.' },
+]
+
+/** Patrocinadores que podem aparecer hoje neste espaço (marcados no espaço e dentro do período). */
+export function patrocinadoresDoEspaco(lista, espaco) {
+  const hoje = hojeSP()
+  return lista.filter((p) => p.ativo !== false && (!p.espacos || p.espacos.includes(espaco)) && (!p.inicio || p.inicio <= hoje) && (!p.fim || p.fim >= hoje))
+}
+
+/** Ordem do rodízio com peso, intercalada: pesos 3, 2 e 1 → A B A C B A (nunca o mesmo várias vezes seguidas). */
+export function sequenciaPonderada(lista) {
+  const ordenada = [...lista].sort((a, b) => String(a.id).localeCompare(String(b.id)))
+  const total = ordenada.reduce((t, p) => t + (p.peso || 1), 0)
+  const credito = new Map(ordenada.map((p) => [p.id, 0]))
+  const seq = []
+  for (let n = 0; n < total; n++) {
+    let melhor = null
+    for (const p of ordenada) {
+      credito.set(p.id, credito.get(p.id) + (p.peso || 1))
+      if (!melhor || credito.get(p.id) > credito.get(melhor.id)) melhor = p
+    }
+    credito.set(melhor.id, credito.get(melhor.id) - total)
+    seq.push(melhor)
+  }
+  return seq
+}
+
+/* ---------- banner rotativo ---------- */
 
 /** Endereço para onde o banner leva ao tocar: site, Instagram ou WhatsApp do patrocinador. */
 function linkDoPatrocinador(p) {
@@ -504,6 +540,7 @@ function linkDoPatrocinador(p) {
 }
 
 function SlideBanner({ p }) {
+  if (p.banner_url) return <img src={p.banner_url} alt={p.nome} className="h-full w-full object-cover" />
   const cor = p.cor_primaria || '#363c80'
   const texto = sobre(cor)
   const destaque = p.promo_titulo || p.slogan || p.descricao || (p.tipo === 'video' ? 'Assista ao nosso vídeo no quiz!' : '')
@@ -528,37 +565,51 @@ function SlideBanner({ p }) {
   )
 }
 
-/** Banner que passa pelos patrocinadores a cada 5 s. Tocar abre o site/Instagram/WhatsApp do anunciante. */
-export function BannerPatrocinadores({ patrocinadores, className = '' }) {
-  const [i, setI] = useState(0)
-  const total = patrocinadores.length
+/** Prévia do banner no painel (como aparece no app). */
+export function PreviaBanner({ p, className = 'h-28' }) {
+  return (
+    <div className={`overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-200 ${className}`}>
+      <SlideBanner p={p} />
+    </div>
+  )
+}
+
+const TROCA_BANNER_MS = 6000
+
+/**
+ * Banner que passa pelos patrocinadores do espaço no rodízio com peso. A troca segue o relógio do servidor,
+ * então todos os ouvintes veem o mesmo patrocinador ao mesmo tempo. Tocar abre o site/Instagram/WhatsApp.
+ */
+export function BannerPatrocinadores({ patrocinadores, espaco = 'banner_inicio', className = '', mostrarSelo = true }) {
+  const seq = sequenciaPonderada(patrocinadoresDoEspaco(patrocinadores, espaco))
+  const [vez, setVez] = useState(() => Math.floor(agoraServidor() / TROCA_BANNER_MS))
   useEffect(() => {
-    if (total < 2) return
-    const t = setInterval(() => setI((n) => (n + 1) % total), 5000)
+    const t = setInterval(() => setVez(Math.floor(agoraServidor() / TROCA_BANNER_MS)), 500)
     return () => clearInterval(t)
-  }, [total])
-  if (!total) return null
-  const atual = patrocinadores[i % total]
+  }, [])
+  // desloca a ordem dos banners de espera para não coincidir com o da tela inicial
+  const total = seq.length
+  const indice = total ? (vez + (espaco === 'banner_espera' ? Math.ceil(total / 2) : 0)) % total : 0
+  const atual = seq[indice]
+  useEffect(() => {
+    if (atual && document.visibilityState === 'visible') contarExibicao(atual.id, espaco)
+  }, [atual?.id, vez, espaco])
+  if (!atual) return null
   const link = linkDoPatrocinador(atual)
   const Caixa = link ? 'a' : 'div'
+  const unicos = [...new Map(seq.map((p) => [p.id, p])).values()]
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative overflow-hidden ${className}`}>
       <Caixa {...(link ? { href: link, target: '_blank', rel: 'noreferrer' } : {})} className="block h-full">
-        <div key={atual.id} className="h-full animate-fade-up">
+        <div key={`${atual.id}-${vez}`} className="h-full animate-fade-up">
           <SlideBanner p={atual} />
         </div>
       </Caixa>
-      <span className="absolute right-2 top-2 rounded-full bg-black/35 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Patrocínio</span>
-      {total > 1 && (
-        <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
-          {patrocinadores.map((p, n) => (
-            <button
-              key={p.id}
-              type="button"
-              aria-label={`Ver ${p.nome}`}
-              onClick={() => setI(n)}
-              className={`h-2 rounded-full transition-all ${n === i % total ? 'w-5 bg-white' : 'w-2 bg-white/50'}`}
-            />
+      {mostrarSelo && <span className="absolute right-2 top-2 rounded-full bg-black/35 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Patrocínio</span>}
+      {unicos.length > 1 && (
+        <div className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+          {unicos.map((p) => (
+            <span key={p.id} className={`h-2 rounded-full transition-all ${p.id === atual.id ? 'w-5 bg-white' : 'w-2 bg-white/50'}`} />
           ))}
         </div>
       )}

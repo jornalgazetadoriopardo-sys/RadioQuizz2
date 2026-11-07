@@ -5,7 +5,8 @@ import { fmt, nomeRodada, useDados } from '../store.jsx'
 import { TextoProxima } from './TextoProxima.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { useContagem } from '../ui.jsx'
-import { PecaAnuncio, liberarVideos } from '../anuncios.jsx'
+import { BannerPatrocinadores, PecaAnuncio, liberarVideos, patrocinadoresDoEspaco, sequenciaPonderada } from '../anuncios.jsx'
+import { contarExibicao } from '../exibicoes.js'
 import { agoraServidor, instanteRodada, useRelogio } from '../relogio.js'
 
 // Fluxo de uma rodada:
@@ -34,13 +35,27 @@ export default function Rodada({ aoSair }) {
   const [resultado, setResultado] = useState(null)
   const [erro, setErro] = useState('')
 
+  // Patrocinadores dos dois anúncios: escolhidos pelo servidor quando a rodada entrou no ar (rodízio com peso,
+  // iguais para todos os ouvintes). Sem essa escolha (banco antigo), usa a posição da rodada no rodízio.
   const [patrocinador1, patrocinador2] = useMemo(() => {
-    if (!patrocinadores.length) return [null, null]
-    const i = Math.max(0, rodadas.findIndex((r) => r.id === rodada?.id))
-    return [patrocinadores[i % patrocinadores.length], patrocinadores[(i + 1) % patrocinadores.length]]
+    const porId = (id) => patrocinadores.find((p) => p.id === id) ?? null
+    const reserva = (espaco, desloca) => {
+      const seq = sequenciaPonderada(patrocinadoresDoEspaco(patrocinadores, espaco))
+      const i = Math.max(0, rodadas.findIndex((r) => r.id === rodada?.id))
+      return seq.length ? seq[(i + desloca) % seq.length] : null
+    }
+    return [
+      rodada?.patrocinador_pergunta ? porId(rodada.patrocinador_pergunta) : reserva('anuncio_pergunta', 0),
+      rodada?.patrocinador_resultado ? porId(rodada.patrocinador_resultado) : reserva('anuncio_resultado', 1),
+    ]
   }, [patrocinadores, rodadas, rodada])
 
-  if (!rodada) return <Mensagem texto="Nenhuma pergunta no ar agora." aoSair={aoSair} />
+  if (!rodada)
+    return (
+      <Moldura banner>
+        <Mensagem texto="Nenhuma pergunta no ar agora." aoSair={aoSair} />
+      </Moldura>
+    )
 
   const curto = modoApresentacao ? DURACOES.modoApresentacao : null
 
@@ -89,16 +104,23 @@ export default function Rodada({ aoSair }) {
     setEtapa('pergunta')
   }
 
-  if (erro) return <Mensagem texto={erro} aoSair={aoSair} />
+  if (erro)
+    return (
+      <Moldura banner>
+        <Mensagem texto={erro} aoSair={aoSair} />
+      </Moldura>
+    )
 
+  // Telas de espera levam a faixa de banner dos patrocinadores embaixo
   return (
-    <div className="no-scrollbar h-full overflow-y-auto bg-slate-50 px-4 pb-8 pt-5">
+    <Moldura banner={['confirmar', 'abrindo', 'enviada', 'resultado'].includes(etapa)}>
       {etapa === 'confirmar' && <Confirmar rodada={rodada} aoParticipar={participar} aoSair={aoSair} />}
       {['confirmar', 'anuncio1'].includes(etapa) && (
         <Anuncio
           key="a1"
           ativo={etapa === 'anuncio1'}
           ate={abrePergunta}
+          espaco="anuncio_pergunta"
           patrocinador={patrocinador1}
           aoTerminar={abrirPergunta}
           titulo="Fique nesta tela"
@@ -134,6 +156,7 @@ export default function Rodada({ aoSair }) {
           key="a2"
           ativo={etapa === 'anuncio2'}
           segundos={curto ?? patrocinador2?.duracao_segundos ?? DURACOES.anuncioGabarito}
+          espaco="anuncio_resultado"
           patrocinador={patrocinador2}
           aoTerminar={() => setEtapa('resultado')}
           titulo="Já vem o resultado!"
@@ -142,6 +165,21 @@ export default function Rodada({ aoSair }) {
         />
       )}
       {etapa === 'resultado' && <Resultado rodada={rodada} resultado={resultado} imagem={pergunta?.imagem_url} aoSair={aoSair} />}
+    </Moldura>
+  )
+}
+
+/** Moldura das telas da rodada: faixa com o logotipo da Difusora no topo e, nas telas de espera, banner embaixo. */
+function Moldura({ banner = false, children }) {
+  const { patrocinadores } = useDados()
+  return (
+    <div className="flex h-full flex-col bg-slate-50">
+      <div className="fundo-marca flex shrink-0 items-center justify-between px-4 py-2.5">
+        <img src="/logo-difusora-branco.png" alt="Difusora 107,3 FM" className="h-9 w-auto" />
+        <span className="text-sm font-extrabold uppercase tracking-wider text-ouro-300">Pergunta da Hora</span>
+      </div>
+      <div className="no-scrollbar flex-1 overflow-y-auto px-4 pb-6 pt-4">{children}</div>
+      {banner && <BannerPatrocinadores patrocinadores={patrocinadores} espaco="banner_espera" className="mx-4 mb-4 h-24 shrink-0 rounded-2xl shadow-md ring-1 ring-slate-200" />}
     </div>
   )
 }
@@ -177,12 +215,12 @@ function Confirmar({ rodada, aoParticipar, aoSair }) {
 
       <button
         onClick={aoParticipar}
-        className="mt-8 flex min-h-[76px] w-full items-center justify-center gap-3 rounded-3xl bg-ouro-400 text-2xl font-black text-marca-900 shadow-lg shadow-ouro-500/40 active:scale-[.98]"
+        className="mt-6 flex min-h-[76px] w-full items-center justify-center gap-3 rounded-3xl bg-ouro-400 text-2xl font-black text-marca-900 shadow-lg shadow-ouro-500/40 active:scale-[.98]"
       >
         <Hand size={30} /> VOU PARTICIPAR
       </button>
       <p className="mt-3 text-base text-slate-600">Ao tocar, o anúncio começa com som. Aumente o volume!</p>
-      <button onClick={aoSair} className="mt-6 min-h-[48px] px-4 text-lg font-semibold text-slate-600 underline">
+      <button onClick={aoSair} className="mt-3 min-h-[48px] px-4 text-lg font-semibold text-slate-600 underline">
         Agora não, voltar ao início
       </button>
     </div>
@@ -200,7 +238,7 @@ function Enviada({ aoConferir }) {
       <p className="mt-2 text-xl text-slate-700">Toque abaixo para ver se você acertou.</p>
       <button
         onClick={aoConferir}
-        className="mt-8 flex min-h-[76px] w-full items-center justify-center gap-2.5 rounded-3xl bg-ouro-400 px-3 text-xl font-black text-marca-900 shadow-lg shadow-ouro-500/40 active:scale-[.98]"
+        className="mt-6 flex min-h-[76px] w-full items-center justify-center gap-2.5 rounded-3xl bg-ouro-400 px-3 text-xl font-black text-marca-900 shadow-lg shadow-ouro-500/40 active:scale-[.98]"
       >
         <Eye size={28} className="shrink-0" /> CONFIRA SUA RESPOSTA
       </button>
@@ -214,7 +252,7 @@ function Relogio({ valor, fracao, legenda, urgente = false, cor = 'marca' }) {
   const volta = 2 * Math.PI * r
   const traco = urgente ? '#dc2626' : cor === 'emerald' ? '#059669' : '#363c80'
   return (
-    <div className="relative mt-6 h-56 w-56">
+    <div className="relative mt-4 h-48 w-48">
       <svg viewBox="0 0 200 200" className="h-full w-full -rotate-90">
         <circle cx="100" cy="100" r={r} fill="#ffffff" stroke="#e2e8f0" strokeWidth="14" />
         <circle
@@ -231,7 +269,7 @@ function Relogio({ valor, fracao, legenda, urgente = false, cor = 'marca' }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ color: traco }}>
-        <span className={`text-7xl font-black tabular-nums leading-none ${urgente ? 'animate-pulse' : ''}`}>{valor}</span>
+        <span className={`text-6xl font-black tabular-nums leading-none ${urgente ? 'animate-pulse' : ''}`}>{valor}</span>
         <span className="mt-2 max-w-[140px] text-sm font-bold leading-tight text-slate-600">{legenda}</span>
       </div>
     </div>
@@ -247,7 +285,7 @@ function Mensagem({ texto, aoSair }) {
   )
 }
 
-function BotaoGrande({ className = 'bg-slate-900 text-white', children, ...props }) {
+function BotaoGrande({ className = 'bg-marca-700 text-white', children, ...props }) {
   return (
     <button className={`flex min-h-[64px] w-full items-center justify-center gap-2 rounded-2xl px-4 text-xl font-extrabold active:scale-[.98] disabled:opacity-40 ${className}`} {...props}>
       {children}
@@ -259,7 +297,10 @@ function BotaoGrande({ className = 'bg-slate-900 text-white', children, ...props
  * Anúncio entre as etapas. Fica montado (escondido) desde a etapa anterior para o vídeo já estar carregado
  * quando chegar a vez dele; a contagem só começa quando `ativo`.
  */
-function Anuncio({ ativo, segundos, ate, patrocinador, aoTerminar, titulo, texto, cor }) {
+function Anuncio({ ativo, espaco, segundos, ate, patrocinador, aoTerminar, titulo, texto, cor }) {
+  useEffect(() => {
+    if (ativo) contarExibicao(patrocinador?.id, espaco)
+  }, [ativo, patrocinador?.id, espaco])
   // Com `segundos`: termina no fim da contagem ou quando o vídeo acabar, o que vier primeiro.
   // Com `ate`: termina na hora marcada (relógio do servidor), igual para todos; se o vídeo acabar antes, aguarda.
   const terminou = useRef(false)
@@ -283,6 +324,7 @@ function Anuncio({ ativo, segundos, ate, patrocinador, aoTerminar, titulo, texto
             <Loader2 className="mx-auto animate-spin text-marca-600" size={40} />
             <p className="mt-4 text-2xl font-extrabold text-slate-900">Prepare-se!</p>
             <p className="mt-1 text-lg text-slate-700">A pergunta já vai abrir.</p>
+            <BannerEspera />
           </div>
         ) : (
           <>
@@ -293,6 +335,11 @@ function Anuncio({ ativo, segundos, ate, patrocinador, aoTerminar, titulo, texto
       </div>
     </div>
   )
+}
+
+function BannerEspera() {
+  const { patrocinadores } = useDados()
+  return <BannerPatrocinadores patrocinadores={patrocinadores} espaco="banner_espera" className="mt-6 h-24 rounded-2xl text-left shadow-md" />
 }
 
 /** Contagem até um instante (relógio do servidor), para todos os celulares virarem juntos. */

@@ -4,7 +4,7 @@ import { mensagemDeErro, supabase } from '../supabase.js'
 import { CORES, Card, ICONES_PATROCINADOR, Icone, Vazio } from '../ui.jsx'
 import { Carregando } from '../auth.jsx'
 import { DURACOES } from '../config.js'
-import { LAYOUTS, PecaAnuncio, ehArquivoVideo, ehShorts, youtubeId } from '../anuncios.jsx'
+import { ESPACOS, LAYOUTS, PecaAnuncio, PreviaBanner, ehArquivoVideo, ehShorts, youtubeId } from '../anuncios.jsx'
 import { Botao, Campo, Texto, enviarImagem, enviarVideo, inputCls, useTabela } from './comum.jsx'
 
 const TIPOS = [
@@ -42,6 +42,11 @@ const novoPatrocinador = () => ({
   instagram: '',
   site: '',
   imagens: [],
+  espacos: ['anuncio_pergunta', 'anuncio_resultado', 'banner_inicio', 'banner_espera'],
+  peso: 1,
+  inicio: null,
+  fim: null,
+  banner_url: null,
 })
 
 // Colunas que existem na tabela (o resto do rascunho não vai para o banco).
@@ -52,6 +57,8 @@ function validar(p) {
   if (p.tipo === 'simples' && !p.slogan.trim()) return 'Escreva a frase do anúncio.'
   if (p.tipo === 'video' && !youtubeId(p.video_url) && !ehArquivoVideo(p.video_url)) return 'Envie o arquivo do vídeo ou cole um link válido do YouTube.'
   if (p.tipo === 'automatico' && !p.promo_titulo.trim() && !p.logo_url) return 'Coloque pelo menos o logotipo ou o título da promoção.'
+  if (!p.espacos?.length) return 'Marque pelo menos um espaço onde o patrocinador aparece.'
+  if (p.inicio && p.fim && p.fim < p.inicio) return 'O fim da veiculação está antes do início.'
   return ''
 }
 
@@ -78,6 +85,8 @@ export default function Patrocinadores() {
     setErro('')
     const registro = Object.fromEntries(COLUNAS.map((k) => [k, rascunho[k]]))
     registro.duracao_segundos = registro.duracao_segundos || null
+    registro.inicio = registro.inicio || null
+    registro.fim = registro.fim || null
     const { error } = await supabase.from('patrocinadores').upsert(registro)
     if (error) {
       setEstado('')
@@ -127,7 +136,7 @@ export default function Patrocinadores() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">{p.nome || 'Sem nome'}</span>
                 <span className="block truncate text-xs text-slate-500">
-                  {TIPO_TEXTO[p.tipo ?? 'simples']} {p.ativo ? '' : '· inativo'}
+                  {TIPO_TEXTO[p.tipo ?? 'simples']} · peso {p.peso ?? 1} {p.ativo ? '' : '· inativo'}
                 </span>
               </span>
             </button>
@@ -201,10 +210,14 @@ export default function Patrocinadores() {
                 <input type="checkbox" checked={rascunho.ativo} onChange={(e) => set('ativo', e.target.checked)} className="h-5 w-5 accent-marca-600" />
                 <span>
                   <span className="block text-sm font-semibold">Anúncio ativo</span>
-                  <span className="block text-xs text-slate-500">Aparece para os ouvintes antes das perguntas.</span>
+                  <span className="block text-xs text-slate-500">Desmarque para tirar de todos os espaços sem apagar.</span>
                 </span>
               </label>
             </div>
+          </Etapa>
+
+          <Etapa numero={rascunho.tipo === 'automatico' ? 6 : 5} titulo="Onde e quando aparece">
+            <OndeQuando p={rascunho} set={set} />
           </Etapa>
 
           <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-2xl bg-white/95 p-4 shadow-lg ring-1 ring-slate-200 backdrop-blur">
@@ -234,9 +247,76 @@ export default function Patrocinadores() {
           <div className="max-h-[680px] min-h-[480px] overflow-y-auto p-4 no-scrollbar">
             <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
             {rascunho ? <PecaAnuncio key={`${rascunho.tipo}-${rascunho.layout}`} p={rascunho} /> : <PecaAnuncio p={null} />}
+            {rascunho && (
+              <>
+                <p className="mb-2 mt-6 text-center text-xs font-bold uppercase tracking-widest text-slate-500">Banner</p>
+                <PreviaBanner p={rascunho} />
+              </>
+            )}
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+const PESOS = [
+  { v: 1, nome: '1 · normal' },
+  { v: 2, nome: '2 · o dobro' },
+  { v: 3, nome: '3 · o triplo' },
+  { v: 4, nome: '4' },
+  { v: 5, nome: '5' },
+]
+
+/** Espaços onde aparece, peso no rodízio, período de veiculação e arte pronta do banner. */
+function OndeQuando({ p, set }) {
+  const marcar = (id, sim) => set('espacos', sim ? [...new Set([...(p.espacos ?? []), id])] : (p.espacos ?? []).filter((e) => e !== id))
+  return (
+    <div className="space-y-5">
+      <div>
+        <span className="mb-2 block text-xs font-semibold text-slate-600">Espaços onde aparece</span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {ESPACOS.map((e) => (
+            <label key={e.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl p-3 ring-2 transition ${p.espacos?.includes(e.id) ? 'bg-marca-50 ring-marca-400' : 'bg-white ring-slate-200'}`}>
+              <input type="checkbox" checked={!!p.espacos?.includes(e.id)} onChange={(ev) => marcar(e.id, ev.target.checked)} className="mt-0.5 h-5 w-5 accent-marca-600" />
+              <span>
+                <span className="block text-sm font-semibold">{e.nome}</span>
+                <span className="block text-xs leading-relaxed text-slate-500">{e.texto}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Campo rotulo="Peso no rodízio">
+          <select value={p.peso ?? 1} onChange={(e) => set('peso', Number(e.target.value))} className={inputCls}>
+            {PESOS.map((o) => (
+              <option key={o.v} value={o.v}>
+                {o.nome}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo rotulo="Veiculação a partir de (opcional)">
+          <input type="date" value={p.inicio ?? ''} onChange={(e) => set('inicio', e.target.value || null)} className={inputCls} />
+        </Campo>
+        <Campo rotulo="Até (opcional)">
+          <input type="date" value={p.fim ?? ''} onChange={(e) => set('fim', e.target.value || null)} className={inputCls} />
+        </Campo>
+      </div>
+      <p className="text-xs leading-relaxed text-slate-500">
+        O rodízio alterna os patrocinadores de forma intercalada. Peso 2 aparece o dobro de vezes de um peso 1, peso 3 o triplo.
+        Fora do período o patrocinador não aparece, sem precisar desativar. Para uma rodada específica, escolha um
+        "patrocinador fixo" no cadastro da rodada.
+      </p>
+      <EnvioImagem
+        rotulo="Arte pronta para o banner (opcional, formato largo, ex.: 1200 × 400)"
+        url={p.banner_url}
+        pasta={p.id}
+        aoEnviar={(url) => set('banner_url', url)}
+        aoRemover={() => set('banner_url', null)}
+      />
+      <p className="-mt-3 text-xs text-slate-500">Sem arte pronta, o app monta o banner com o logotipo, as cores e a promoção.</p>
     </div>
   )
 }

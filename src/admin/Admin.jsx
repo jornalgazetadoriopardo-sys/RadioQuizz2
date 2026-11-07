@@ -12,11 +12,13 @@ import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../his
 import { Avatar, CORES, Card, ICONES_PATROCINADOR, Icone, Selo, Vazio } from '../ui.jsx'
 import { Botao, Campo, Numero, Texto, enviarImagem, inputCls, reduzirFoto, useTabela } from './comum.jsx'
 import Patrocinadores from './Patrocinadores.jsx'
+import { ESPACOS } from '../anuncios.jsx'
 
 const ABAS = [
   { id: 'aovivo', grupo: 'Programa', nome: 'Ao vivo', icone: RadioTower, descricao: 'Solte as perguntas no ar e acompanhe as respostas em tempo real.', cor: 'bg-marca-100 text-marca-600' },
   { id: 'rodadas', grupo: 'Conteúdo', nome: 'Rodadas', icone: ListChecks, descricao: 'Perguntas, horários, pontos e agendamento de cada rodada.', cor: 'bg-violet-100 text-violet-600' },
   { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Anúncios simples, vídeos do YouTube ou montados automaticamente.', cor: 'bg-ouro-100 text-ouro-600' },
+  { id: 'exibicoes', grupo: 'Conteúdo', nome: 'Exibições', icone: BarChart3, descricao: 'Quantas vezes cada patrocinador apareceu em cada espaço.', cor: 'bg-sky-100 text-sky-600' },
   { id: 'premios', grupo: 'Conteúdo', nome: 'Prêmios', icone: Gift, descricao: 'O que os primeiros colocados do ranking ganham.', cor: 'bg-emerald-100 text-emerald-600' },
   { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação dos ouvintes pelos pontos.', cor: 'bg-ouro-100 text-ouro-600' },
   { id: 'cadastros', grupo: 'Ouvintes', nome: 'Cadastros', icone: Users, descricao: 'Ouvintes cadastrados: nome, e-mail, CPF e WhatsApp.', cor: 'bg-violet-100 text-violet-600' },
@@ -178,6 +180,7 @@ function Painel() {
           {aba === 'ranking' && <RankingAdmin />}
           {aba === 'historico' && <HistoricoAdmin />}
           {aba === 'cadastros' && <CadastrosAdmin />}
+          {aba === 'exibicoes' && <ExibicoesAdmin />}
           {aba === 'avisos' && <AvisosAdmin />}
           {aba === 'feedback' && <FeedbackAdmin />}
         </div>
@@ -441,6 +444,8 @@ function DiagnosticoAgendamento() {
 }
 
 function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
+  const { patrocinadores } = useDados()
+  const nomePatrocinador = (id) => patrocinadores.find((p) => p.id === id)?.nome
   const abriram = respostas.length
   const responderam = respostas.filter((r) => r.respondida_em)
   const acertos = responderam.filter((r) => r.acertou).length
@@ -462,6 +467,12 @@ function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
           <p className="text-sm text-slate-500">
             {rodada.nivel} • vale {fmt(rodada.pontos)} pts • {rodada.tempo_resposta}s para responder
           </p>
+          {(rodada.patrocinador_pergunta || rodada.patrocinador_resultado) && (
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
+              <Megaphone size={14} className="text-ouro-600" /> Anúncios: <b>{nomePatrocinador(rodada.patrocinador_pergunta) ?? '—'}</b> antes da pergunta e{' '}
+              <b>{nomePatrocinador(rodada.patrocinador_resultado) ?? '—'}</b> antes do resultado
+            </p>
+          )}
         </div>
         <Botao variante="perigo" onClick={encerrar} disabled={ocupado}>
           <Square size={14} /> Encerrar rodada
@@ -602,7 +613,7 @@ function sortearPontos(nivel) {
   return Math.round((min + Math.random() * (max - min)) * 100) / 100
 }
 
-const CAMPOS_RODADA = ['id', 'data', 'horario', 'horario_fim', 'modo', 'categoria', 'nivel', 'pontos', 'tempo_resposta']
+const CAMPOS_RODADA = ['id', 'data', 'horario', 'horario_fim', 'modo', 'categoria', 'nivel', 'pontos', 'tempo_resposta', 'patrocinador_fixo']
 const HORA = /^\d{2}:\d{2}(:\d{2})?$/
 
 /** Texto curto do agendamento: "Automático · 21/10 · 10:30 às 10:40" ou "Manual · 10:30". */
@@ -677,6 +688,7 @@ function ImagemPergunta({ url, aoMudar }) {
 }
 
 function Rodadas() {
+  const { patrocinadores } = useDados()
   const { itens, recarregar } = useTabela(() => supabase.from('rodadas').select('*, rodadas_conteudo(*)').order('data', { ascending: true, nullsFirst: true }).order('horario'))
   // Junta a parte pública e a secreta da rodada num único formulário.
   const lista = itens?.map(({ rodadas_conteudo: emb, ...r }) => {
@@ -697,6 +709,7 @@ function Rodadas() {
     rodada.data = rodada.data || null
     rodada.horario = comSegundos(rodada.horario)
     rodada.horario_fim = comSegundos(rodada.horario_fim) || null
+    rodada.patrocinador_fixo = rodada.patrocinador_fixo || null
     // Sem campo de título: o nome da rodada (painel, histórico e notificações) é a categoria
     rodada.categoria = rodada.categoria.trim()
     rodada.titulo = rodada.categoria
@@ -718,6 +731,7 @@ function Rodadas() {
       novo={() => ({
         id: crypto.randomUUID(),
         modo: 'manual',
+        patrocinador_fixo: null,
         data: hojeSP(),
         horario: '14:00:00',
         horario_fim: '14:00:45',
@@ -816,6 +830,19 @@ function Rodadas() {
             </p>
             {validarAgenda(r) && <p className="text-xs font-semibold text-marca-600">{validarAgenda(r)}</p>}
           </div>
+          <Campo rotulo="Patrocinador dos anúncios desta rodada" className="sm:col-span-6">
+            <select value={r.patrocinador_fixo ?? ''} onChange={(e) => set('patrocinador_fixo', e.target.value || null)} className={inputCls}>
+              <option value="">Rodízio automático (conforme o peso de cada patrocinador)</option>
+              {patrocinadores.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Fixo: {p.nome}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-[11px] text-slate-500">
+              Fixo: os dois anúncios da rodada são desse patrocinador ("rodada oferecida por…"). Vale da próxima vez que a rodada entrar no ar.
+            </span>
+          </Campo>
           <Campo rotulo="Nível" className="sm:col-span-2">
             <select value={r.nivel} onChange={(e) => set('nivel', e.target.value)} className={inputCls}>
               {NIVEIS.map((n) => (
@@ -943,6 +970,113 @@ function FeedbackAdmin() {
           {f.navegador && <p className="mt-1 truncate text-[11px] text-slate-400">{f.navegador}</p>}
         </div>
       ))}
+    </Card>
+  )
+}
+
+/* ---------- aba Exibições (relatório dos patrocinadores) ---------- */
+
+function ExibicoesAdmin() {
+  const hoje = hojeBR()
+  const [de, setDe] = useState(`${hoje.slice(0, 8)}01`)
+  const [ate, setAte] = useState(hoje)
+  const [itens, setItens] = useState(null)
+  const [erro, setErro] = useState('')
+  const [carregando, setCarregando] = useState(false)
+
+  const buscar = useCallback(async () => {
+    setCarregando(true)
+    setErro('')
+    const { data, error } = await supabase.rpc('relatorio_exibicoes', { p_de: de, p_ate: ate })
+    setCarregando(false)
+    if (error) return setErro(mensagemDeErro(error))
+    setItens(data)
+  }, [de, ate])
+
+  useEffect(() => {
+    buscar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // uma linha por patrocinador, uma coluna por espaço
+  const linhas = Object.values(
+    (itens ?? []).reduce((acc, i) => {
+      const l = (acc[i.patrocinador_id] ??= { nome: i.nome, total: 0, rodadas: 0 })
+      l[i.espaco] = Number(i.exibicoes)
+      l[`${i.espaco}_rodadas`] = Number(i.rodadas)
+      l.total += Number(i.exibicoes)
+      l.rodadas += Number(i.rodadas)
+      return acc
+    }, {}),
+  ).sort((a, b) => b.total - a.total)
+  const n = (v) => (v ?? 0).toLocaleString('pt-BR')
+
+  const exportar = () => {
+    const cab = ['Patrocinador', ...ESPACOS.map((e) => e.nome), 'Total de exibições', 'Rodadas (antes da pergunta)', 'Rodadas (antes do resultado)']
+    const corpo = linhas.map((l) => [l.nome, ...ESPACOS.map((e) => l[e.id] ?? 0), l.total, l.anuncio_pergunta_rodadas ?? 0, l.anuncio_resultado_rodadas ?? 0])
+    const csv = [cab, ...corpo].map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `exibicoes-patrocinadores-${de}-a-${ate}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
+        <Campo rotulo="De">
+          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className={inputCls} />
+        </Campo>
+        <Campo rotulo="Até">
+          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className={inputCls} />
+        </Campo>
+        <Botao onClick={buscar} disabled={carregando || !de || !ate}>
+          {carregando ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Ver período
+        </Botao>
+        <Botao variante="secundario" disabled={!linhas.length} onClick={exportar}>
+          <Download size={15} /> Exportar planilha
+        </Botao>
+      </div>
+      <p className="border-b border-slate-100 px-4 py-2 text-xs leading-relaxed text-slate-500">
+        <b>Exibições</b>: quantas vezes o anúncio ou banner apareceu na tela de um ouvinte. <b>Rodadas</b>: em quantas rodadas o
+        patrocinador foi o escolhido do anúncio (igual para todos os ouvintes da rodada).
+      </p>
+      {erro && <p className="p-4 text-sm text-red-600">{erro}</p>}
+      {!itens && !erro && <Carregando />}
+      {itens && linhas.length === 0 && <Vazio icone={BarChart3} titulo="Nenhuma exibição no período" texto="As exibições aparecem aqui conforme os ouvintes usam o app." className="m-4 shadow-none ring-0" />}
+      {linhas.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
+                <th className="px-4 py-2 font-semibold">Patrocinador</th>
+                {ESPACOS.map((e) => (
+                  <th key={e.id} className="px-3 py-2 text-right font-semibold">
+                    {e.nome}
+                  </th>
+                ))}
+                <th className="px-4 py-2 text-right font-semibold">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {linhas.map((l) => (
+                <tr key={l.nome}>
+                  <td className="px-4 py-2.5 font-semibold">{l.nome}</td>
+                  {ESPACOS.map((e) => (
+                    <td key={e.id} className="px-3 py-2.5 text-right tabular-nums">
+                      {n(l[e.id])}
+                      {e.id.startsWith('anuncio') && <span className="block text-[11px] text-slate-400">{n(l[`${e.id}_rodadas`])} rodada(s)</span>}
+                    </td>
+                  ))}
+                  <td className="px-4 py-2.5 text-right font-bold tabular-nums">{n(l.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Card>
   )
 }
