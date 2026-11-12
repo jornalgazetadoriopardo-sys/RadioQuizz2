@@ -190,7 +190,17 @@ function PatrocinioEAvisos() {
   if (!patrocinadores.length) return <div className="overflow-hidden rounded-3xl ring-2 ring-slate-200">{avisos}</div>
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-2 ring-slate-200">
-      <BannerPatrocinadores patrocinadores={patrocinadores} espaco="banner_inicio" className="aspect-video w-full" />
+      {/* banner vertical (9:16) como um cartaz, centralizado sobre o fundo azul */}
+      <div className="fundo-marca px-4 py-4">
+        <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-widest text-ouro-300">Patrocínio</p>
+        <BannerPatrocinadores
+          patrocinadores={patrocinadores}
+          espaco="banner_inicio"
+          className="mx-auto aspect-[9/16] max-w-full rounded-2xl shadow-lg"
+          style={{ height: 'min(56vh, 480px)' }}
+          mostrarSelo={false}
+        />
+      </div>
       {avisos}
     </div>
   )

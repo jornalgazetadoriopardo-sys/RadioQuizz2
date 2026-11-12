@@ -112,9 +112,9 @@ export default function Rodada({ aoSair }) {
       </Moldura>
     )
 
-  // Telas de espera levam a faixa de banner dos patrocinadores embaixo
+  // Telas de espera levam o banner dos patrocinadores embaixo (menos "Vou participar", que precisa do espaço para o botão)
   return (
-    <Moldura banner={['confirmar', 'abrindo', 'enviada', 'resultado'].includes(etapa)}>
+    <Moldura banner={['abrindo', 'enviada', 'resultado'].includes(etapa)}>
       {etapa === 'confirmar' && <Confirmar rodada={rodada} aoParticipar={participar} aoSair={aoSair} />}
       {['confirmar', 'anuncio1'].includes(etapa) && (
         <Anuncio
@@ -180,13 +180,14 @@ function Moldura({ banner = false, children }) {
         <span className="text-sm font-extrabold uppercase tracking-wider text-ouro-300">Pergunta da Hora</span>
       </div>
       <div className="no-scrollbar flex-1 overflow-y-auto px-4 pb-6 pt-4">{children}</div>
-      {/* banner 16:9, limitado para não tomar a tela de espera */}
+      {/* banner vertical (9:16) pequeno, para não tomar a tela de espera */}
       {banner && (
         <BannerPatrocinadores
           patrocinadores={patrocinadores}
           espaco="banner_espera"
-          className="mx-auto mb-3 aspect-video shrink-0 rounded-2xl shadow-md ring-1 ring-slate-200"
-          style={{ width: 'min(calc(100% - 2rem), 36vh)' }}
+          className="mx-auto mb-3 aspect-[9/16] shrink-0 rounded-2xl shadow-md ring-1 ring-slate-200"
+          style={{ height: 'min(26vh, 230px)' }}
+          mostrarSelo={false}
         />
       )}
     </div>
@@ -348,7 +349,15 @@ function Anuncio({ ativo, espaco, segundos, ate, patrocinador, aoTerminar, titul
 
 function BannerEspera() {
   const { patrocinadores } = useDados()
-  return <BannerPatrocinadores patrocinadores={patrocinadores} espaco="banner_espera" className="mt-6 aspect-video w-full rounded-2xl text-left shadow-md" />
+  return (
+    <BannerPatrocinadores
+      patrocinadores={patrocinadores}
+      espaco="banner_espera"
+      className="mx-auto mt-6 aspect-[9/16] rounded-2xl text-left shadow-md"
+      style={{ height: 'min(34vh, 300px)' }}
+      mostrarSelo={false}
+    />
+  )
 }
 
 /** Contagem até um instante (relógio do servidor), para todos os celulares virarem juntos. */
