@@ -485,7 +485,7 @@ function AnuncioSimples({ p }) {
   )
 }
 
-/** Até 3 banners 16:9 do anunciante, passando sozinhos a cada 5 s. */
+/** Até 3 banners verticais (9:16) do anunciante, passando sozinhos a cada 5 s, na altura da tela. */
 function AnuncioBanners({ p }) {
   const banners = p.banners?.length ? p.banners : p.banner_url ? [p.banner_url] : []
   const [i, setI] = useState(0)
@@ -496,8 +496,8 @@ function AnuncioBanners({ p }) {
   }, [banners.length])
   if (!banners.length) return <Aviso texto={p.nome || 'Banner do anunciante'} />
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-slate-200 shadow-md">
-      <img key={i} src={banners[i % banners.length]} alt={p.nome} className="aspect-video w-full object-cover animate-fade-up" />
+    <div className="relative mx-auto aspect-[9/16] max-w-full overflow-hidden rounded-2xl bg-slate-200 shadow-md" style={ALTURA_VERTICAL}>
+      <img key={i} src={banners[i % banners.length]} alt={p.nome} className="h-full w-full object-cover animate-fade-up" />
       {banners.length > 1 && (
         <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
           {banners.map((_, n) => (
@@ -585,26 +585,25 @@ function SlideBanner({ p, volta = 0 }) {
   const yt = p.tipo === 'video' ? youtubeId(p.video_url) : null
   const foto = p.imagens?.[0] || (yt ? `https://i.ytimg.com/vi/${yt}/mqdefault.jpg` : null)
   return (
-    <div className="flex h-full items-center gap-3 px-4" style={{ background: cor, color: texto }}>
+    // em pé (9:16), para os anunciantes antigos que não têm banner próprio
+    <div className="flex h-full flex-col items-center justify-center gap-2 overflow-hidden p-3 text-center" style={{ background: cor, color: texto }}>
       {p.tipo === 'automatico' || p.logo_url ? (
-        <Logo p={p} tamanho="h-16 w-16" className="shrink-0 shadow-sm" />
+        <Logo p={p} tamanho="h-14 w-14" className="shrink-0 shadow-sm" />
       ) : (
-        <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-white text-marca-700 shadow-sm">
-          <Icone nome={p.icone} size={32} />
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-white text-marca-700 shadow-sm">
+          <Icone nome={p.icone} size={28} />
         </div>
       )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold uppercase tracking-wide opacity-80">{p.nome}</p>
-        <p className="mt-0.5 line-clamp-2 text-lg font-extrabold leading-snug">{destaque}</p>
-        {p.preco && <p className="mt-0.5 text-xl font-black">{p.preco}</p>}
-      </div>
-      {foto && <img src={foto} alt="" className="h-20 w-24 shrink-0 rounded-xl object-cover shadow-sm" />}
+      <p className="line-clamp-2 text-xs font-bold uppercase tracking-wide opacity-80">{p.nome}</p>
+      {destaque && <p className="line-clamp-3 text-base font-extrabold leading-snug">{destaque}</p>}
+      {p.preco && <p className="text-xl font-black">{p.preco}</p>}
+      {foto && <img src={foto} alt="" className="w-full flex-1 rounded-xl object-cover shadow-sm" style={{ minHeight: 0, maxHeight: '45%' }} />}
     </div>
   )
 }
 
 /** Prévia do banner no painel (como aparece no app). */
-export function PreviaBanner({ p, className = 'aspect-video w-full' }) {
+export function PreviaBanner({ p, className = 'mx-auto aspect-[9/16] w-44' }) {
   return (
     <div className={`overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-200 ${className}`}>
       <SlideBanner p={p} />

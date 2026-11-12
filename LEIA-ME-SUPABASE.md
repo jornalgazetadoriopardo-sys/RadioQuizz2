@@ -43,7 +43,7 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
   do painel. Antes de rodar, avise a equipe de testes: quem entrou com e-mail vai precisar completar o cadastro.
 - `016_patrocinio.sql` — espaços de patrocínio (anúncio antes da pergunta e do resultado, banner da tela inicial e
   das telas de espera), rodízio com peso, período de veiculação, patrocinador fixo por rodada e aba **Exibições**.
-- `017_modalidades_patrocinio.sql` — anunciante com até 3 banners 16:9, modalidade rotativo (vezes por dia) ou fixo
+- `017_modalidades_patrocinio.sql` — anunciante com até 3 banners verticais (9:16), modalidade rotativo (vezes por dia) ou fixo
   (horário), período de circulação e data da pergunta final em cada prêmio.
 
 ## 2. Ligar as formas de login

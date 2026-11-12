@@ -10,7 +10,7 @@ import { Botao, Campo, Texto, enviarImagem, enviarVideo, inputCls, reduzirFoto, 
 
 const TIPOS = [
   { id: 'video', nome: 'Vídeo', descricao: 'Vídeo do YouTube (de preferência vertical) ou arquivo MP4.', icone: Clapperboard, cor: 'bg-marca-100 text-marca-700' },
-  { id: 'banners', nome: 'Banners', descricao: 'Até 3 imagens no formato 16:9, que passam uma após a outra.', icone: Images, cor: 'bg-ouro-100 text-ouro-700' },
+  { id: 'banners', nome: 'Banners', descricao: 'Até 3 imagens verticais (9:16), que passam uma após a outra.', icone: Images, cor: 'bg-ouro-100 text-ouro-700' },
 ]
 // Modelos antigos (continuam funcionando, mas não são mais oferecidos para cadastro novo)
 const TIPOS_ANTIGOS = { simples: 'Simples (modelo antigo)', automatico: 'Montado pelo app (modelo antigo)' }
@@ -291,7 +291,7 @@ export default function Patrocinadores() {
   )
 }
 
-/** Até 3 banners 16:9 do anunciante, com as especificações. */
+/** Até 3 banners verticais (9:16) do anunciante, com as especificações. */
 function EditorBanners({ p, set, obrigatorio }) {
   const [enviando, setEnviando] = useState(false)
   const [aviso, setAviso] = useState('')
@@ -310,8 +310,8 @@ function EditorBanners({ p, set, obrigatorio }) {
       })
       const url = await enviarImagem(await reduzirFoto(arquivo, 1920), `${p.id}/banners`)
       set('banners', [...banners, url].slice(0, 3))
-      if (proporcao && Math.abs(proporcao - 16 / 9) > 0.08)
-        setAviso('Atenção: essa imagem não está em 16:9. Ela foi enviada, mas as bordas podem ser cortadas no app.')
+      if (proporcao && Math.abs(proporcao - 9 / 16) > 0.04)
+        setAviso('Atenção: essa imagem não está na vertical 9:16. Ela foi enviada, mas as bordas podem ser cortadas no app.')
     } catch (e) {
       setAviso(e.message)
     }
@@ -324,19 +324,19 @@ function EditorBanners({ p, set, obrigatorio }) {
         <p className="font-semibold">Especificações dos banners</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-4">
           <li>
-            Formato <b>16:9 (horizontal)</b>: de preferência <b>1920 × 1080 px</b> (ou 1280 × 720 px).
+            Formato <b>9:16 (vertical, igual ao story do Instagram)</b>: de preferência <b>1080 × 1920 px</b> (ou 720 × 1280 px).
           </li>
           <li>JPG ou PNG, até 3 MB cada. Até 3 banners por anunciante; eles passam um após o outro.</li>
-          <li>Textos grandes e com bom contraste (o banner aparece pequeno no celular). Deixe uma margem livre nas bordas.</li>
+          <li>Textos grandes e com bom contraste. Deixe uma margem livre nas bordas e evite informação importante no topo e no rodapé.</li>
           <li>
             Aparecem nos espaços de banner (tela inicial e telas de espera){obrigatorio ? ' e também nos anúncios das rodadas' : ''}.
           </li>
         </ul>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="flex flex-wrap gap-3">
         {banners.map((url, i) => (
-          <div key={url} className="relative overflow-hidden rounded-xl ring-1 ring-slate-200">
-            <img src={url} alt="" className="aspect-video w-full object-cover" />
+          <div key={url} className="relative w-32 overflow-hidden rounded-xl ring-1 ring-slate-200">
+            <img src={url} alt="" className="aspect-[9/16] w-full object-cover" />
             <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">{i + 1}º</span>
             <button
               type="button"
@@ -349,7 +349,7 @@ function EditorBanners({ p, set, obrigatorio }) {
           </div>
         ))}
         {banners.length < 3 && (
-          <label className="grid aspect-video cursor-pointer place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-center text-xs font-semibold text-slate-500 transition hover:border-marca-400 hover:text-marca-600">
+          <label className="grid aspect-[9/16] w-32 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-center text-xs font-semibold text-slate-500 transition hover:border-marca-400 hover:text-marca-600">
             {enviando ? (
               <Loader2 className="animate-spin text-marca-600" />
             ) : (
