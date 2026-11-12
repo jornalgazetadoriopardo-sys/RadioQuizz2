@@ -29,13 +29,13 @@ export function useTabela(consulta, { tempoReal } = {}) {
 export function Campo({ rotulo, className = '', children }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1.5 block text-xs font-semibold text-slate-600">{rotulo}</span>
+      <span className="mb-2 block text-sm font-semibold text-slate-700">{rotulo}</span>
       {children}
     </label>
   )
 }
 
-export const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-marca-400 focus:ring-4 focus:ring-marca-100'
+export const inputCls = 'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base shadow-sm outline-none transition placeholder:text-slate-400 focus:border-marca-400 focus:ring-4 focus:ring-marca-100'
 
 export function Texto({ valor, onChange, multilinha, ...props }) {
   return multilinha ? (
@@ -56,15 +56,16 @@ export function Botao({ variante = 'primario', className = '', children, ...prop
     perigo: 'bg-white text-red-600 ring-1 ring-red-200 hover:bg-red-50',
     escuro: 'bg-marca-800 text-white hover:bg-marca-900',
   }
+  // tamanho padrão maior; quem passa o próprio espaçamento (botões pequenos) fica com o dele
+  const tamanho = /(^|\s)(p|px|py)-/.test(className) ? '' : 'px-5 py-3 text-base'
   return (
-    <button className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm transition active:scale-[.98] disabled:opacity-40 ${v[variante]} ${className}`} {...props}>
+    <button className={`inline-flex items-center justify-center gap-2 rounded-xl font-semibold shadow-sm transition active:scale-[.98] disabled:opacity-40 ${tamanho} ${v[variante]} ${className}`} {...props}>
       {children}
     </button>
   )
 }
 
 
-/** Envia uma imagem para o armazenamento dos patrocinadores e devolve o endereço público. */
 /** Diminui uma foto grande (máx. 1280 px, JPEG) para carregar rápido no celular. PNG/SVG pequenos ficam como estão. */
 export async function reduzirFoto(arquivo, lado = 1280) {
   if (!/^image\/(jpeg|png|webp)$/.test(arquivo.type)) return arquivo
@@ -109,4 +110,20 @@ export async function enviarVideo(arquivo, pasta) {
   const { error } = await supabase.storage.from('patrocinadores').upload(caminho, arquivo, { contentType: arquivo.type })
   if (error) throw new Error(mensagemDeErro(error))
   return supabase.storage.from('patrocinadores').getPublicUrl(caminho).data.publicUrl
+}
+
+/** Bloco numerado de um formulário do painel (ex.: "1 Quando", "2 Pergunta"). */
+export function Secao({ numero, titulo, descricao, children, className = '' }) {
+  return (
+    <section className={`rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm sm:p-7 ${className}`}>
+      <div className="mb-5 flex items-start gap-3">
+        {numero != null && <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-marca-700 text-base font-bold text-white">{numero}</span>}
+        <div>
+          <h3 className="text-lg font-bold leading-tight text-slate-900">{titulo}</h3>
+          {descricao && <p className="mt-1 text-sm leading-relaxed text-slate-500">{descricao}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  )
 }

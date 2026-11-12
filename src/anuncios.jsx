@@ -43,7 +43,7 @@ export function liberarVideos() {
   for (const liberar of liberadores) liberar()
 }
 
-function VideoArquivo({ url, vertical, comSom = false, tocar = true, aoTerminar }) {
+function VideoArquivo({ url, vertical, comSom = false, tocar = true, aoTerminar, alturaVertical }) {
   const video = useRef(null)
   const [semSom, setSemSom] = useState(!comSom)
   const fim = useRef(aoTerminar)
@@ -95,7 +95,7 @@ function VideoArquivo({ url, vertical, comSom = false, tocar = true, aoTerminar 
 
   return (
     <div className="relative">
-      <div className={`overflow-hidden rounded-2xl bg-black ${vertical ? 'mx-auto aspect-[9/16] max-w-full' : 'aspect-video'}`} style={vertical ? ALTURA_VERTICAL : undefined}>
+      <div className={`overflow-hidden rounded-2xl bg-black ${vertical ? 'mx-auto aspect-[9/16] max-w-full' : 'aspect-video'}`} style={vertical ? (alturaVertical ? { height: alturaVertical } : ALTURA_VERTICAL) : undefined}>
         <video
           ref={video}
           src={url}
@@ -128,7 +128,7 @@ function VideoArquivo({ url, vertical, comSom = false, tocar = true, aoTerminar 
  * Sem comSom (prévia do painel): começa sozinho sem som, com o botão.
  * aoTerminar: chamado quando o vídeo acaba (sem ele, o vídeo fica repetindo).
  */
-function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar }) {
+function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar, alturaVertical }) {
   const id = youtubeId(url)
   const quadro = useRef(null)
   const [pronto, setPronto] = useState(false)
@@ -245,7 +245,7 @@ function VideoYouTube({ url, vertical, comSom = false, tocar = true, aoTerminar 
 
   return (
     <div className="relative">
-      <div className={`overflow-hidden rounded-2xl bg-black ${vertical ? 'mx-auto aspect-[9/16] max-w-full' : 'aspect-video'}`} style={vertical ? ALTURA_VERTICAL : undefined}>
+      <div className={`overflow-hidden rounded-2xl bg-black ${vertical ? 'mx-auto aspect-[9/16] max-w-full' : 'aspect-video'}`} style={vertical ? (alturaVertical ? { height: alturaVertical } : ALTURA_VERTICAL) : undefined}>
         <iframe
           ref={quadro}
           src={`https://www.youtube-nocookie.com/embed/${id}?${params}`}
@@ -486,7 +486,7 @@ function AnuncioSimples({ p }) {
 }
 
 /** Até 3 banners verticais (9:16) do anunciante, passando sozinhos a cada 5 s, na altura da tela. */
-function AnuncioBanners({ p }) {
+function AnuncioBanners({ p, alturaVertical }) {
   const banners = p.banners?.length ? p.banners : p.banner_url ? [p.banner_url] : []
   const [i, setI] = useState(0)
   useEffect(() => {
@@ -496,7 +496,7 @@ function AnuncioBanners({ p }) {
   }, [banners.length])
   if (!banners.length) return <Aviso texto={p.nome || 'Banner do anunciante'} />
   return (
-    <div className="relative mx-auto aspect-[9/16] max-w-full overflow-hidden rounded-2xl bg-slate-200 shadow-md" style={ALTURA_VERTICAL}>
+    <div className="relative mx-auto aspect-[9/16] max-w-full overflow-hidden rounded-2xl bg-slate-200 shadow-md" style={alturaVertical ? { height: alturaVertical } : ALTURA_VERTICAL}>
       <img key={i} src={banners[i % banners.length]} alt={p.nome} className="h-full w-full object-cover animate-fade-up" />
       {banners.length > 1 && (
         <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
@@ -510,12 +510,12 @@ function AnuncioBanners({ p }) {
 }
 
 /** A peça do anúncio, conforme o tipo cadastrado. */
-export function PecaAnuncio({ p, comSom = false, tocar = true, aoTerminarVideo }) {
+export function PecaAnuncio({ p, comSom = false, tocar = true, aoTerminarVideo, alturaVertical }) {
   if (!p) return <Aviso texto="Espaço publicitário disponível" />
   if (p.tipo === 'video' && ehArquivoVideo(p.video_url))
-    return <VideoArquivo key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} />
-  if (p.tipo === 'video') return <VideoYouTube key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} />
-  if (p.tipo === 'banners') return <AnuncioBanners p={p} />
+    return <VideoArquivo key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} alturaVertical={alturaVertical} />
+  if (p.tipo === 'video') return <VideoYouTube key={p.video_url} url={p.video_url} vertical={p.video_vertical} comSom={comSom} tocar={tocar} aoTerminar={aoTerminarVideo} alturaVertical={alturaVertical} />
+  if (p.tipo === 'banners') return <AnuncioBanners p={p} alturaVertical={alturaVertical} />
   if (p.tipo === 'automatico') {
     const L = LAYOUT_COMPONENTE[p.layout] ?? LayoutOferta
     return <L p={p} />
