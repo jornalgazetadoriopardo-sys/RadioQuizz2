@@ -1,11 +1,12 @@
 -- =====================================================================
 -- Pergunta da Hora — ATUALIZAR O BANCO (tudo de uma vez)
--- Junta as atualizações 005 a 017 (agendamento, relógio, notificações, anúncios, segundos,
+-- Junta as atualizações 005 a 018 (agendamento, relógio, notificações, anúncios, segundos,
 -- correção do agendamento, "Vou participar", todos juntos, imagem na pergunta, permissões dos
--- arquivos, cadastro com CPF, patrocínio com rodízio, modalidades e data final dos prêmios). Pode ser rodado mais de uma vez: o que já existe é mantido.
+-- arquivos, cadastro com CPF, patrocínio com rodízio, modalidades, data final dos prêmios e banners horizontais). Pode ser rodado mais de uma vez: o que já existe é mantido.
 -- Como usar: Supabase → SQL Editor → New query → cole TODO este texto → Run.
 -- No fim aparece uma tabela conferindo cada parte.
 -- =====================================================================
+
 
 
 
@@ -1375,6 +1376,28 @@ notify pgrst, 'reload schema';
 select 'OK: banners, modalidades rotativo/fixo, vezes por dia e data final dos prêmios' as resultado;
 
 -- #####################################################################
+-- 018_banners_horizontais.sql
+-- #####################################################################
+
+-- =====================================================================
+-- Pergunta da Hora — banners horizontais para as outras posições
+-- Cada anunciante pode ter:
+--   banners             → até 3 banners VERTICAIS (9:16), para os anúncios de 15 s e 30 s
+--   banners_horizontais → até 3 banners HORIZONTAIS (16:9), para a tela inicial e as telas de espera
+-- Precisa do 017. Como usar: Supabase → SQL Editor → New query → cole este arquivo → Run.
+-- Pode ser rodado mais de uma vez.
+-- =====================================================================
+
+alter table public.patrocinadores add column if not exists banners_horizontais text[] not null default '{}';
+
+alter table public.patrocinadores drop constraint if exists patrocinadores_banners_horizontais_max;
+alter table public.patrocinadores add constraint patrocinadores_banners_horizontais_max check (cardinality(banners_horizontais) <= 3);
+
+notify pgrst, 'reload schema';
+
+select 'OK: banners horizontais para as outras posições' as resultado;
+
+-- #####################################################################
 -- Conferência final
 -- #####################################################################
 select parte, case when ok then 'OK' else 'FALTANDO' end as situacao from (values
@@ -1389,5 +1412,6 @@ select parte, case when ok then 'OK' else 'FALTANDO' end as situacao from (value
   ('Cadastro com CPF (015)', exists (select 1 from pg_proc where proname = 'completar_cadastro')),
   ('Patrocínio: espaços, peso e relatório (016)', exists (select 1 from pg_proc where proname = 'escolher_patrocinador')),
   ('Banners, rotativo/fixo e data final dos prêmios (017)', exists (select 1 from pg_proc where proname = 'patrocinador_rotativo')),
+  ('Banners horizontais (018)', exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'patrocinadores' and column_name = 'banners_horizontais')),
   ('Agendador automático (pg_cron)', exists (select 1 from pg_extension where extname = 'pg_cron'))
 ) as t(parte, ok);

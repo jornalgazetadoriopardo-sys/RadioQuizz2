@@ -11,7 +11,7 @@ Projeto: `sxhwkkplxaotpxtgbzqe` — painel em https://supabase.com/dashboard/pro
 
 ### Atualizações do banco
 **Jeito mais fácil:** rode o arquivo [`supabase/ATUALIZAR-BANCO.sql`](supabase/ATUALIZAR-BANCO.sql), que junta
-todas as atualizações de 005 a 017 e pode ser rodado mais de uma vez. No fim ele mostra uma tabela com OK em cada parte.
+todas as atualizações de 005 a 018 e pode ser rodado mais de uma vez. No fim ele mostra uma tabela com OK em cada parte.
 Pelo celular, abra o link "raw" do arquivo no GitHub, selecione tudo, copie e cole no SQL Editor.
 
 Ou rode cada arquivo novo, na ordem do número:
@@ -45,6 +45,8 @@ Quando o projeto ganhar um arquivo novo em `supabase/migrations/`, rode só esse
   das telas de espera), rodízio com peso, período de veiculação, patrocinador fixo por rodada e aba **Exibições**.
 - `017_modalidades_patrocinio.sql` — anunciante com até 3 banners verticais (9:16), modalidade rotativo (vezes por dia) ou fixo
   (horário), período de circulação e data da pergunta final em cada prêmio.
+- `018_banners_horizontais.sql` — banners horizontais (16:9) para a tela inicial e as telas de espera; os verticais
+  (9:16) ficam para os anúncios de 15 s e 30 s.
 
 ## 2. Ligar as formas de login
 O ouvinte entra com **Google** ou com **e-mail e código**, e na primeira vez completa o cadastro (nome, CPF e

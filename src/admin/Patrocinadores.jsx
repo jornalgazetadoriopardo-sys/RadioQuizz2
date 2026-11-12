@@ -10,7 +10,7 @@ import { Botao, Campo, Texto, enviarImagem, enviarVideo, inputCls, reduzirFoto, 
 
 const TIPOS = [
   { id: 'video', nome: 'Vídeo', descricao: 'Vídeo do YouTube (de preferência vertical) ou arquivo MP4.', icone: Clapperboard, cor: 'bg-marca-100 text-marca-700' },
-  { id: 'banners', nome: 'Banners', descricao: 'Até 3 imagens verticais (9:16), que passam uma após a outra.', icone: Images, cor: 'bg-ouro-100 text-ouro-700' },
+  { id: 'banners', nome: 'Banners', descricao: 'Até 3 imagens verticais (9:16) para os anúncios, que passam uma após a outra.', icone: Images, cor: 'bg-ouro-100 text-ouro-700' },
 ]
 // Modelos antigos (continuam funcionando, mas não são mais oferecidos para cadastro novo)
 const TIPOS_ANTIGOS = { simples: 'Simples (modelo antigo)', automatico: 'Montado pelo app (modelo antigo)' }
@@ -49,6 +49,7 @@ const novoPatrocinador = () => ({
   fim: null,
   banner_url: null,
   banners: [],
+  banners_horizontais: [],
   modalidade: 'rotativo',
   vezes_dia: 1,
   horarios_fixos: [],
@@ -60,7 +61,7 @@ const COLUNAS = Object.keys(novoPatrocinador())
 function validar(p) {
   if (!p.nome.trim()) return 'Informe o nome do anunciante.'
   if (p.tipo === 'video' && !youtubeId(p.video_url) && !ehArquivoVideo(p.video_url)) return 'Cole o link do YouTube ou envie o arquivo do vídeo.'
-  if (p.tipo === 'banners' && !p.banners?.length) return 'Envie pelo menos 1 banner.'
+  if (p.tipo === 'banners' && !p.banners?.length) return 'Envie pelo menos 1 banner vertical.'
   if (p.tipo === 'simples' && !p.slogan.trim()) return 'Escreva a frase do anúncio.'
   if (!p.inicio) return 'Informe a data de início da circulação.'
   if (p.fim && p.fim < p.inicio) return 'O fim da circulação está antes do início.'
@@ -138,8 +139,8 @@ export default function Patrocinadores() {
   }
 
   const antigo = rascunho && TIPOS_ANTIGOS[rascunho.tipo]
-  // número da etapa dos banners: depois do conteúdo do vídeo (3) ou dos modelos antigos (3 e 4)
-  const passoBanners = { video: 4, banners: 3, simples: 4, automatico: 5 }[rascunho?.tipo] ?? 4
+  // número da etapa dos banners horizontais: depois do conteúdo (vídeo, banners verticais ou modelos antigos)
+  const passoBanners = { video: 4, banners: 4, simples: 4, automatico: 5 }[rascunho?.tipo] ?? 4
 
   return (
     <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
@@ -244,8 +245,18 @@ export default function Patrocinadores() {
             {rascunho.tipo === 'video' && <ConteudoVideo p={rascunho} set={set} />}
             {rascunho.tipo === 'simples' && <ConteudoSimples p={rascunho} set={set} />}
             {rascunho.tipo === 'automatico' && <ConteudoAutomatico p={rascunho} set={set} />}
-            <Etapa numero={passoBanners} titulo={rascunho.tipo === 'banners' ? 'Banners' : 'Banners (opcional)'}>
-              <EditorBanners p={rascunho} set={set} obrigatorio={rascunho.tipo === 'banners'} />
+            {rascunho.tipo === 'banners' && (
+              <Etapa numero={3} titulo="Banners verticais (anúncios de 15 s e 30 s)">
+                <EditorBanners p={rascunho} set={set} formato="vertical" />
+              </Etapa>
+            )}
+            <Etapa numero={passoBanners} titulo="Banners horizontais (outras posições)">
+              <EditorBanners
+                p={rascunho}
+                set={set}
+                formato="horizontal"
+                aviso="Opcional. Sem banners horizontais, este anunciante não aparece na tela inicial nem nas telas de espera."
+              />
             </Etapa>
 
             <Etapa numero={passoBanners + 1} titulo="Onde, quando e quantas vezes">
@@ -274,9 +285,9 @@ export default function Patrocinadores() {
               <div className="max-h-[680px] min-h-[420px] overflow-y-auto p-4 no-scrollbar">
                 <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
                 <PecaAnuncio key={`${rascunho.tipo}-${rascunho.layout}-${rascunho.video_url}`} p={rascunho} />
-                {(rascunho.banners?.length > 0 || rascunho.banner_url) && (
+                {(rascunho.banners_horizontais?.length > 0 || rascunho.banner_url) && (
                   <>
-                    <p className="mb-2 mt-6 text-center text-xs font-bold uppercase tracking-widest text-slate-500">Banner</p>
+                    <p className="mb-2 mt-6 text-center text-xs font-bold uppercase tracking-widest text-slate-500">Banner das outras posições</p>
                     <PreviaBanner p={rascunho} />
                   </>
                 )}
@@ -291,11 +302,43 @@ export default function Patrocinadores() {
   )
 }
 
-/** Até 3 banners verticais (9:16) do anunciante, com as especificações. */
-function EditorBanners({ p, set, obrigatorio }) {
+const FORMATOS = {
+  vertical: {
+    campo: 'banners',
+    pasta: 'banners',
+    proporcao: 9 / 16,
+    nome: 'vertical 9:16',
+    caixa: 'aspect-[9/16] w-32',
+    especificacao: (
+      <>
+        Formato <b>9:16 (vertical, igual ao story do Instagram)</b>: de preferência <b>1080 × 1920 px</b> (ou 720 × 1280 px).
+      </>
+    ),
+    onde: 'Aparecem nos anúncios de 15 s antes e 30 s depois de responder, ocupando a altura da tela.',
+    margem: 'Deixe uma margem livre nas bordas e evite informação importante no topo e no rodapé.',
+  },
+  horizontal: {
+    campo: 'banners_horizontais',
+    pasta: 'banners-horizontais',
+    proporcao: 16 / 9,
+    nome: 'horizontal 16:9',
+    caixa: 'aspect-video w-56',
+    especificacao: (
+      <>
+        Formato <b>16:9 (horizontal)</b>: de preferência <b>1920 × 1080 px</b> (ou 1280 × 720 px).
+      </>
+    ),
+    onde: 'Aparecem nas outras posições: tela inicial e telas de espera (abrindo, resposta enviada e resultado).',
+    margem: 'O banner aparece pequeno no celular: use textos grandes e deixe uma margem livre nas bordas.',
+  },
+}
+
+/** Até 3 banners do anunciante no formato pedido (vertical para os anúncios, horizontal para as outras posições). */
+function EditorBanners({ p, set, formato = 'vertical', aviso: avisoVazio }) {
+  const f = FORMATOS[formato]
   const [enviando, setEnviando] = useState(false)
   const [aviso, setAviso] = useState('')
-  const banners = p.banners ?? []
+  const banners = p[f.campo] ?? []
 
   const escolher = async (arquivo) => {
     if (!arquivo) return
@@ -308,10 +351,10 @@ function EditorBanners({ p, set, obrigatorio }) {
         img.onerror = () => ok(null)
         img.src = URL.createObjectURL(arquivo)
       })
-      const url = await enviarImagem(await reduzirFoto(arquivo, 1920), `${p.id}/banners`)
-      set('banners', [...banners, url].slice(0, 3))
-      if (proporcao && Math.abs(proporcao - 9 / 16) > 0.04)
-        setAviso('Atenção: essa imagem não está na vertical 9:16. Ela foi enviada, mas as bordas podem ser cortadas no app.')
+      const url = await enviarImagem(await reduzirFoto(arquivo, 1920), `${p.id}/${f.pasta}`)
+      set(f.campo, [...banners, url].slice(0, 3))
+      if (proporcao && Math.abs(proporcao - f.proporcao) / f.proporcao > 0.06)
+        setAviso(`Atenção: essa imagem não está no formato ${f.nome}. Ela foi enviada, mas as bordas podem ser cortadas no app.`)
     } catch (e) {
       setAviso(e.message)
     }
@@ -321,26 +364,22 @@ function EditorBanners({ p, set, obrigatorio }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-sky-50 p-4 text-xs leading-relaxed text-sky-900 ring-1 ring-sky-200">
-        <p className="font-semibold">Especificações dos banners</p>
+        <p className="font-semibold">Especificações</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-4">
-          <li>
-            Formato <b>9:16 (vertical, igual ao story do Instagram)</b>: de preferência <b>1080 × 1920 px</b> (ou 720 × 1280 px).
-          </li>
-          <li>JPG ou PNG, até 3 MB cada. Até 3 banners por anunciante; eles passam um após o outro.</li>
-          <li>Textos grandes e com bom contraste. Deixe uma margem livre nas bordas e evite informação importante no topo e no rodapé.</li>
-          <li>
-            Aparecem nos espaços de banner (tela inicial e telas de espera){obrigatorio ? ' e também nos anúncios das rodadas' : ''}.
-          </li>
+          <li>{f.especificacao}</li>
+          <li>JPG ou PNG, até 3 MB cada. Até 3 banners; eles passam um após o outro.</li>
+          <li>Textos grandes e com bom contraste. {f.margem}</li>
+          <li>{f.onde}</li>
         </ul>
       </div>
       <div className="flex flex-wrap gap-3">
         {banners.map((url, i) => (
-          <div key={url} className="relative w-32 overflow-hidden rounded-xl ring-1 ring-slate-200">
-            <img src={url} alt="" className="aspect-[9/16] w-full object-cover" />
+          <div key={url} className={`relative overflow-hidden rounded-xl ring-1 ring-slate-200 ${f.caixa}`}>
+            <img src={url} alt="" className="h-full w-full object-cover" />
             <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">{i + 1}º</span>
             <button
               type="button"
-              onClick={() => set('banners', banners.filter((b) => b !== url))}
+              onClick={() => set(f.campo, banners.filter((b) => b !== url))}
               title="Tirar este banner"
               className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-red-600 shadow hover:bg-white"
             >
@@ -349,11 +388,13 @@ function EditorBanners({ p, set, obrigatorio }) {
           </div>
         ))}
         {banners.length < 3 && (
-          <label className="grid aspect-[9/16] w-32 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-center text-xs font-semibold text-slate-500 transition hover:border-marca-400 hover:text-marca-600">
+          <label
+            className={`grid cursor-pointer place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-center text-xs font-semibold text-slate-500 transition hover:border-marca-400 hover:text-marca-600 ${f.caixa}`}
+          >
             {enviando ? (
               <Loader2 className="animate-spin text-marca-600" />
             ) : (
-              <span className="flex flex-col items-center gap-1">
+              <span className="flex flex-col items-center gap-1 px-2">
                 <ImagePlus size={22} /> Adicionar banner ({banners.length}/3)
               </span>
             )}
@@ -362,7 +403,7 @@ function EditorBanners({ p, set, obrigatorio }) {
         )}
       </div>
       {aviso && <p className="text-sm font-semibold text-ouro-700">{aviso}</p>}
-      {!obrigatorio && !banners.length && <p className="text-xs text-slate-500">Sem banners, este anunciante aparece só nos anúncios das rodadas (vídeo).</p>}
+      {!banners.length && avisoVazio && <p className="text-xs text-slate-500">{avisoVazio}</p>}
     </div>
   )
 }
@@ -484,7 +525,7 @@ const ONDE_MOSTRAR = [
   {
     espacos: ['banner_inicio', 'banner_espera'],
     nome: 'Banners em outras posições',
-    texto: 'Tela inicial e faixa das telas de espera e do resultado. Precisa ter banners cadastrados.',
+    texto: 'Tela inicial e telas de espera e do resultado. Usa os banners horizontais.',
   },
 ]
 
@@ -508,8 +549,8 @@ function OndeMostrar({ p, set }) {
           </label>
         ))}
       </div>
-      {p.tipo === 'video' && !p.banners?.length && marcado(ONDE_MOSTRAR[2]) && (
-        <p className="mt-2 text-xs font-semibold text-ouro-700">Este anunciante ainda não tem banners: ele só vai aparecer nos anúncios das rodadas.</p>
+      {!p.banners_horizontais?.length && !p.banner_url && marcado(ONDE_MOSTRAR[2]) && (
+        <p className="mt-2 text-xs font-semibold text-ouro-700">Este anunciante ainda não tem banners horizontais: ele não vai aparecer nas outras posições.</p>
       )}
     </div>
   )
