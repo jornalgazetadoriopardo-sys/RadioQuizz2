@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   BarChart3, Bell, Clock, Dices, Send, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
-  ShieldAlert, Square, Trash2, Trophy, Users, Eye, EyeOff, MessageCircle, Zap,
+  Check, ShieldAlert, Square, Trash2, Trophy, Users, Eye, EyeOff, MessageCircle, Zap,
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
 import { Carregando, TelaLogin, useAuth } from '../auth.jsx'
@@ -10,7 +10,7 @@ import { mensagemDeErro, supabase } from '../supabase.js'
 import { diferencaDoAparelhoMs, fmtFalta, fmtHora, instanteRodada, relogioSincronizado, useRelogio } from '../relogio.js'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
 import { Avatar, Card, Selo, Vazio } from '../ui.jsx'
-import { Botao, Campo, Numero, Texto, enviarImagem, inputCls, reduzirFoto, useTabela } from './comum.jsx'
+import { Botao, Campo, Numero, Secao, Texto, enviarImagem, inputCls, reduzirFoto, useTabela } from './comum.jsx'
 import Patrocinadores from './Patrocinadores.jsx'
 import { ESPACOS } from '../anuncios.jsx'
 
@@ -517,10 +517,16 @@ function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
 /* ---------- componentes de formulário ---------- */
 
 /** Lista à esquerda + formulário de edição à direita. */
-function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => true, salvar, recarregar }) {
+/**
+ * Lista + formulário dos cadastros do painel (rodadas, prêmios).
+ * agrupar(item) → título do grupo na lista (ex.: o dia); filtros: [{ id, nome, teste(item) }].
+ * O formulário vem em blocos (renderForm) e o botão Salvar fica preso no rodapé da tela.
+ */
+function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => true, salvar, recarregar, agrupar, filtros, textoNovo = 'Novo', nomeItem = 'item', problema }) {
   const [rascunho, setRascunho] = useState(null)
   const [estado, setEstado] = useState('')
   const [erro, setErro] = useState('')
+  const [filtro, setFiltro] = useState(filtros?.[0]?.id)
   const set = (campo, valor) => setRascunho((r) => ({ ...r, [campo]: valor }))
 
   useEffect(() => {
@@ -529,6 +535,15 @@ function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => t
 
   if (!itens) return <Carregando />
   const existe = rascunho && itens.some((i) => i.id === rascunho.id)
+  const f = filtros?.find((x) => x.id === filtro)
+  const visiveis = f ? itens.filter(f.teste) : itens
+  const grupos = []
+  for (const item of visiveis) {
+    const g = agrupar ? agrupar(item) : ''
+    if (!grupos.length || grupos[grupos.length - 1].nome !== g) grupos.push({ nome: g, itens: [] })
+    grupos[grupos.length - 1].itens.push(item)
+  }
+  const aviso = rascunho && problema ? problema(rascunho) : ''
 
   const enviar = async (e) => {
     e.preventDefault()
@@ -542,7 +557,7 @@ function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => t
       }
       await recarregar()
       setEstado('salvo')
-      setTimeout(() => setEstado(''), 2000)
+      setTimeout(() => setEstado(''), 2500)
     } catch (err) {
       setErro(mensagemDeErro(err))
       setEstado('')
@@ -550,7 +565,7 @@ function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => t
   }
 
   const excluir = async () => {
-    if (!confirm('Excluir este item?')) return
+    if (!confirm(`Excluir ${nomeItem}?`)) return
     const { error } = await supabase.from(tabela).delete().eq('id', rascunho.id)
     if (error) return setErro(mensagemDeErro(error))
     await recarregar()
@@ -558,48 +573,68 @@ function Editor({ tabela, itens, novo, renderItem, renderForm, validar = () => t
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,340px)_1fr]">
-      <Card className="flex max-h-[640px] flex-col">
-        <div className="flex items-center justify-between border-b border-slate-100 p-3">
-          <span className="text-sm font-semibold text-slate-600">{itens.length} cadastrados</span>
-          <Botao onClick={() => setRascunho(novo())} className="px-3 py-1.5">
-            <Plus size={15} /> Novo
+    <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <Card className="flex flex-col overflow-hidden xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:self-start">
+        <div className="space-y-3 border-b border-slate-100 p-4">
+          <Botao className="w-full" onClick={() => setRascunho(novo())}>
+            <Plus size={18} /> {textoNovo}
           </Botao>
+          {filtros && (
+            <div className="flex flex-wrap gap-1.5">
+              {filtros.map((x) => (
+                <button
+                  key={x.id}
+                  type="button"
+                  onClick={() => setFiltro(x.id)}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${filtro === x.id ? 'bg-marca-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                >
+                  {x.nome} ({itens.filter(x.teste).length})
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="flex-1 divide-y divide-slate-100 overflow-y-auto">
-          {itens.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setRascunho(item)}
-              className={`block w-full px-3 py-2.5 text-left transition hover:bg-slate-50 ${rascunho?.id === item.id ? 'bg-marca-50/70' : ''}`}
-            >
-              {renderItem(item)}
-            </button>
+        <div className="max-h-96 flex-1 overflow-y-auto xl:max-h-none">
+          {visiveis.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nada por aqui.</p>}
+          {grupos.map((g) => (
+            <div key={g.nome}>
+              {g.nome && <p className="sticky top-0 z-[1] bg-slate-50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">{g.nome}</p>}
+              <div className="divide-y divide-slate-100">
+                {g.itens.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setRascunho(item)}
+                    className={`block w-full border-l-4 px-4 py-3.5 text-left transition hover:bg-slate-50 ${rascunho?.id === item.id ? 'border-marca-600 bg-marca-50/70' : 'border-transparent'}`}
+                  >
+                    {renderItem(item)}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </Card>
 
-      <Card className="p-5">
-        {rascunho ? (
-          <form onSubmit={enviar}>
-            {renderForm(rascunho, set)}
-            <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-              <Botao type="submit" disabled={!validar(rascunho) || estado === 'salvando'}>
-                {estado === 'salvando' ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Salvar
+      {rascunho ? (
+        <form onSubmit={enviar} className="min-w-0 space-y-5">
+          {renderForm(rascunho, set)}
+          <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-2xl bg-white/95 p-4 shadow-lg ring-1 ring-slate-200 backdrop-blur">
+            <Botao type="submit" disabled={!validar(rascunho) || estado === 'salvando'}>
+              {estado === 'salvando' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Salvar
+            </Botao>
+            {aviso && <span className="text-sm font-semibold text-ouro-700">{aviso}</span>}
+            {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo! Os celulares já foram atualizados.</span>}
+            {erro && <span className="text-sm font-semibold text-red-600">{erro}</span>}
+            {existe && (
+              <Botao type="button" variante="perigo" className="ml-auto" onClick={excluir}>
+                <Trash2 size={18} /> Excluir
               </Botao>
-              {existe && (
-                <Botao type="button" variante="perigo" className="ml-auto" onClick={excluir}>
-                  <Trash2 size={15} /> Excluir
-                </Botao>
-              )}
-              {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo! Os celulares já foram atualizados.</span>}
-              {erro && <span className="text-sm font-semibold text-red-600">{erro}</span>}
-            </div>
-          </form>
-        ) : (
-          <p className="py-10 text-center text-sm text-slate-500">Selecione um item ou clique em "Novo".</p>
-        )}
-      </Card>
+            )}
+          </div>
+        </form>
+      ) : (
+        <Vazio icone={ListChecks} titulo="Nada selecionado" texto={`Escolha na lista ou clique em "${textoNovo}".`} />
+      )}
     </div>
   )
 }
@@ -623,6 +658,15 @@ function agendaTexto(r) {
   const dura = r.horario_fim ? segundosEntre(comSegundos(r.horario), comSegundos(r.horario_fim)) : NaN
   const noAr = dura > 0 && dura < 600 ? ` (${dura} s no ar)` : ''
   return `${r.modo === 'automatico' ? 'Automático' : 'Manual'} · ${dia}${fmtHorario(r.horario)}${fim}${noAr}`
+}
+
+/** "Hoje · 12/11", "Amanhã · 13/11", "Sexta · 14/11" */
+function nomeDoDia(data) {
+  const hoje = hojeSP()
+  const d = new Date(`${data}T12:00:00Z`)
+  const dias = Math.round((d - new Date(`${hoje}T12:00:00Z`)) / 86400000)
+  const nome = dias === 0 ? 'Hoje' : dias === 1 ? 'Amanhã' : dias === -1 ? 'Ontem' : ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][d.getUTCDay()]
+  return `${nome} · ${diaMes(data)}`
 }
 
 function validarRodada(r) {
@@ -768,42 +812,59 @@ function Rodadas() {
         explicacao: '',
       })}
       validar={(r) => validarRodada(r) === ''}
+      problema={validarRodada}
+      textoNovo="Nova pergunta"
+      nomeItem="esta pergunta"
+      agrupar={(r) => (r.data ? nomeDoDia(r.data) : 'Sem data')}
+      filtros={[
+        { id: 'proximas', nome: 'Próximas', teste: (r) => !r.data || r.data >= hojeSP() },
+        { id: 'anteriores', nome: 'Anteriores', teste: (r) => r.data && r.data < hojeSP() },
+        { id: 'todas', nome: 'Todas', teste: () => true },
+      ]}
       renderItem={(r) => (
-        <div className="flex items-center gap-3">
-          <span className="w-11 shrink-0 text-center">
-            <span className="block font-display text-sm">{fmtHorario(r.horario)}</span>
-            {r.data && <span className="block text-[10px] text-slate-500">{diaMes(r.data)}</span>}
-          </span>
+        <div className="flex items-center gap-4">
+          <span className="w-16 shrink-0 text-center font-display text-xl text-marca-800">{fmtHorario(r.horario).slice(0, 5)}</span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">Pergunta das {horaFalada(r.horario)}</p>
-            <p className="truncate text-xs text-slate-500">{agendaTexto(r)} • +{fmt(r.pontos)} pts</p>
+            <p className="truncate text-base font-semibold text-slate-900">{r.pergunta || <span className="text-slate-400">Sem pergunta ainda</span>}</p>
+            <p className="truncate text-sm text-slate-500">
+              {r.modo === 'automatico' ? 'Automática' : 'Manual'} · {fmt(r.pontos)} pts
+            </p>
           </div>
-          {r.status === 'no_ar' ? <Selo>No ar</Selo> : r.modo === 'automatico' && <Selo cor="slate" className="normal-case">Auto</Selo>}
+          {r.status === 'no_ar' ? (
+            <Selo>No ar</Selo>
+          ) : r.status === 'encerrada' ? (
+            <Selo cor="slate" className="normal-case">
+              Encerrada
+            </Selo>
+          ) : !r.pergunta ? (
+            <Selo cor="amber" className="normal-case">
+              Falta pergunta
+            </Selo>
+          ) : null}
         </div>
       )}
       renderForm={(r, set) => (
-        <div className="grid gap-4 sm:grid-cols-6">
-          <div className="space-y-3 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200 sm:col-span-6">
-            <span className="block text-xs font-semibold text-slate-600">Como a rodada entra no ar</span>
-            <div className="grid gap-2 sm:grid-cols-2">
+        <>
+          <Secao numero={1} titulo="Quando" descricao={`Pergunta das ${horaFalada(r.horario)}${r.data ? ` · ${nomeDoDia(r.data).toLowerCase()}` : ''}`}>
+            <div className="grid gap-3 sm:grid-cols-2">
               {[
-                { id: 'manual', titulo: 'Manual', texto: 'A produção clica em "No ar" e em "Encerrar" no Ao vivo.' },
-                { id: 'automatico', titulo: 'Automático (agendado)', texto: 'Abre e fecha sozinha na data e nos horários abaixo.' },
+                { id: 'automatico', titulo: 'Automática (agendada)', texto: 'Abre e fecha sozinha na data e nos horários abaixo.' },
+                { id: 'manual', titulo: 'Manual', texto: 'A produção clica em "No ar" e em "Encerrar" na aba Ao vivo.' },
               ].map((m) => (
-                <label key={m.id} className={`flex cursor-pointer gap-3 rounded-lg bg-white p-3 ring-2 ${r.modo === m.id ? 'ring-marca-500' : 'ring-slate-200'}`}>
-                  <input type="radio" name="modo" checked={r.modo === m.id} onChange={() => set('modo', m.id)} className="mt-1 h-4 w-4 accent-marca-600" />
+                <label key={m.id} className={`flex cursor-pointer gap-3 rounded-2xl p-4 ring-2 transition ${r.modo === m.id ? 'bg-marca-50 ring-marca-500' : 'bg-white ring-slate-200 hover:ring-slate-300'}`}>
+                  <input type="radio" name="modo" checked={r.modo === m.id} onChange={() => set('modo', m.id)} className="mt-1 h-5 w-5 accent-marca-600" />
                   <span>
-                    <span className="block text-sm font-semibold">{m.titulo}</span>
-                    <span className="block text-xs text-slate-500">{m.texto}</span>
+                    <span className="block text-base font-semibold">{m.titulo}</span>
+                    <span className="mt-0.5 block text-sm text-slate-500">{m.texto}</span>
                   </span>
                 </label>
               ))}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Campo rotulo={r.modo === 'automatico' ? 'Data' : 'Data (opcional)'}>
                 <input type="date" value={r.data ?? ''} onChange={(e) => set('data', e.target.value)} className={inputCls} />
               </Campo>
-              <Campo rotulo={r.modo === 'automatico' ? 'Abre às (h:min:s)' : 'Horário previsto (h:min:s)'}>
+              <Campo rotulo={r.modo === 'automatico' ? 'Abre às' : 'Horário previsto'}>
                 <input
                   type="time"
                   step="1"
@@ -835,59 +896,80 @@ function Rodadas() {
                   className={inputCls}
                 />
               </Campo>
-              <Campo rotulo={r.modo === 'automatico' ? 'Encerra às (h:min:s)' : 'Encerramento previsto'}>
+              <Campo rotulo={r.modo === 'automatico' ? 'Fecha às' : 'Encerramento previsto'}>
                 <input type="time" step="1" value={comSegundos(r.horario_fim) ?? ''} onChange={(e) => set('horario_fim', comSegundos(e.target.value))} className={inputCls} />
               </Campo>
             </div>
-            <p className="text-xs text-slate-500">
-              O tempo no ar é o prazo para o ouvinte <b>tocar em Responder</b>. Quem entrou a tempo vê o anúncio e depois
-              ainda tem o <b>tempo para responder</b> (campo abaixo), mesmo que a rodada feche durante o anúncio.
-            </p>
-            <p className="text-xs text-slate-500">
+            <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-600">
+              O tempo no ar é o prazo para o ouvinte tocar em <b>Vou participar</b>. Quem entrou a tempo vê o anúncio e depois tem o <b>tempo para
+              responder</b> (bloco 4).{' '}
               {r.modo === 'automatico'
-                ? 'Horário de Brasília, pelo relógio do servidor. O agendador confere a cada segundo. O botão "No ar" continua valendo para adiantar ou reabrir, e "Encerrar" para fechar antes.'
+                ? 'Horário de Brasília, pelo relógio do servidor. Na aba Ao vivo, "No ar" adianta ou reabre e "Encerrar" fecha antes.'
                 : 'Nas rodadas manuais, a data e os horários só aparecem para o ouvinte como informação.'}
             </p>
-            {validarAgenda(r) && <p className="text-xs font-semibold text-marca-600">{validarAgenda(r)}</p>}
-          </div>
-          <Campo rotulo="Nível" className="sm:col-span-2">
-            <select value={r.nivel} onChange={(e) => set('nivel', e.target.value)} className={inputCls}>
-              {NIVEIS.map((n) => (
-                <option key={n}>{n}</option>
-              ))}
-            </select>
-          </Campo>
-          <Campo rotulo="Tempo para responder (segundos)" className="sm:col-span-2">
-            <Numero valor={r.tempo_resposta} onChange={(v) => set('tempo_resposta', v)} min="5" max="120" />
-          </Campo>
-          <div className="sm:col-span-3">
-            <span className="mb-1 block text-xs font-semibold text-slate-600">Pontos para quem acertar</span>
-            <div className="flex gap-2">
-              <Numero valor={r.pontos} onChange={(v) => set('pontos', v)} step="0.01" min="0" />
-              <Botao type="button" variante="secundario" title="Sortear um valor quebrado conforme o nível" onClick={() => set('pontos', sortearPontos(r.nivel))}>
-                <Dices size={15} /> Sortear
-              </Botao>
+            {validarAgenda(r) && <p className="mt-3 text-sm font-semibold text-red-600">{validarAgenda(r)}</p>}
+          </Secao>
+
+          <Secao numero={2} titulo="Pergunta" descricao="Só aparece para o ouvinte depois do anúncio.">
+            <Texto multilinha valor={r.pergunta} onChange={(v) => set('pergunta', v)} placeholder="Ex.: Quem é a cantora da foto?" />
+            <div className="mt-5">
+              <ImagemPergunta url={r.imagem_url} aoMudar={(v) => set('imagem_url', v)} />
             </div>
-            <span className="mt-1 block text-[11px] text-slate-400">Use valores quebrados (ex.: 53,75) para evitar empates no ranking.</span>
-          </div>
-          <Campo rotulo="Pergunta (só aparece depois do anúncio)" className="sm:col-span-6">
-            <Texto multilinha valor={r.pergunta} onChange={(v) => set('pergunta', v)} />
-          </Campo>
-          <ImagemPergunta url={r.imagem_url} aoMudar={(v) => set('imagem_url', v)} />
-          <div className="space-y-2 sm:col-span-6">
-            <span className="block text-xs font-semibold text-slate-600">Alternativas (marque a correta)</span>
-            {r.alternativas.map((alt, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input type="radio" name="correta" checked={r.correta === i} onChange={() => set('correta', i)} className="h-4 w-4 accent-emerald-600" />
-                <span className="w-5 text-sm font-bold text-slate-500">{String.fromCharCode(65 + i)})</span>
-                <Texto valor={alt} onChange={(v) => set('alternativas', r.alternativas.map((a, j) => (j === i ? v : a)))} />
+          </Secao>
+
+          <Secao numero={3} titulo="Alternativas" descricao='Escreva as quatro e toque em "Correta" na resposta certa.'>
+            <div className="space-y-3">
+              {r.alternativas.map((alt, i) => {
+                const certa = r.correta === i
+                return (
+                  <div key={i} className={`flex items-center gap-3 rounded-2xl p-2 pr-3 ring-2 transition ${certa ? 'bg-emerald-50 ring-emerald-400' : 'bg-white ring-slate-200'}`}>
+                    <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-lg font-black ${certa ? 'bg-emerald-600 text-white' : 'bg-ouro-400 text-marca-900'}`}>
+                      {String.fromCharCode(65 + i)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <Texto valor={alt} onChange={(v) => set('alternativas', r.alternativas.map((a, j) => (j === i ? v : a)))} placeholder={`Alternativa ${String.fromCharCode(65 + i)}`} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => set('correta', i)}
+                      className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-bold transition ${certa ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                    >
+                      <Check size={16} /> {certa ? 'Correta' : 'Marcar'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+            <Campo rotulo="Explicação (aparece no resultado, opcional)" className="mt-5">
+              <Texto multilinha valor={r.explicacao} onChange={(v) => set('explicacao', v)} placeholder="Ex.: Ela gravou o primeiro disco em 1965." />
+            </Campo>
+          </Secao>
+
+          <Secao numero={4} titulo="Pontos e tempo">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Campo rotulo="Nível">
+                <select value={r.nivel} onChange={(e) => set('nivel', e.target.value)} className={inputCls}>
+                  {NIVEIS.map((n) => (
+                    <option key={n}>{n}</option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo rotulo="Tempo para responder (segundos)">
+                <Numero valor={r.tempo_resposta} onChange={(v) => set('tempo_resposta', v)} min="5" max="120" />
+              </Campo>
+              <div>
+                <span className="mb-2 block text-sm font-semibold text-slate-700">Pontos para quem acertar</span>
+                <div className="flex gap-2">
+                  <Numero valor={r.pontos} onChange={(v) => set('pontos', v)} step="0.01" min="0" />
+                  <Botao type="button" variante="secundario" title="Sortear um valor quebrado conforme o nível" onClick={() => set('pontos', sortearPontos(r.nivel))}>
+                    <Dices size={18} />
+                  </Botao>
+                </div>
+                <span className="mt-1 block text-xs text-slate-500">Use valores quebrados (ex.: 53,75) para evitar empates.</span>
               </div>
-            ))}
-          </div>
-          <Campo rotulo="Explicação (mostrada no resultado)" className="sm:col-span-6">
-            <Texto multilinha valor={r.explicacao} onChange={(v) => set('explicacao', v)} />
-          </Campo>
-        </div>
+            </div>
+          </Secao>
+        </>
       )}
     />
   )
@@ -915,7 +997,10 @@ function Premios() {
           </div>
         </div>
       )}
+      textoNovo="Novo prêmio"
+      nomeItem="este prêmio"
       renderForm={(p, set) => (
+        <Secao titulo="Prêmio">
         <div className="grid gap-4 sm:grid-cols-4">
           <Campo rotulo="Colocação">
             <Numero valor={p.colocacao} onChange={(v) => set('colocacao', v)} min="1" />
@@ -936,6 +1021,7 @@ function Premios() {
             </select>
           </Campo>
         </div>
+        </Secao>
       )}
     />
   )

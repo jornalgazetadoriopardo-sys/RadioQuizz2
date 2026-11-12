@@ -6,7 +6,7 @@ import { Carregando } from '../auth.jsx'
 import { DURACOES } from '../config.js'
 import { hojeSP } from '../store.jsx'
 import { LAYOUTS, PecaAnuncio, PreviaBanner, ehArquivoVideo, ehShorts, youtubeId } from '../anuncios.jsx'
-import { Botao, Campo, Texto, enviarImagem, enviarVideo, inputCls, reduzirFoto, useTabela } from './comum.jsx'
+import { Botao, Campo, Secao, Texto, enviarImagem, enviarVideo, inputCls, reduzirFoto, useTabela } from './comum.jsx'
 
 const TIPOS = [
   { id: 'video', nome: 'Vídeo', descricao: 'Vídeo do YouTube (de preferência vertical) ou arquivo MP4.', icone: Clapperboard, cor: 'bg-marca-100 text-marca-700' },
@@ -143,7 +143,7 @@ export default function Patrocinadores() {
   const passoBanners = { video: 4, banners: 4, simples: 4, automatico: 5 }[rascunho?.tipo] ?? 4
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
       {/* Lista com busca e filtro: rola sozinha, cabe qualquer quantidade de anunciantes */}
       <Card className="flex flex-col overflow-hidden xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:self-start">
         <div className="space-y-3 border-b border-slate-100 p-4">
@@ -160,7 +160,7 @@ export default function Patrocinadores() {
                 key={f.id}
                 type="button"
                 onClick={() => setFiltro(f.id)}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${filtro === f.id ? 'bg-marca-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${filtro === f.id ? 'bg-marca-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >
                 {f.nome} ({contagem(f.id)})
               </button>
@@ -177,14 +177,14 @@ export default function Patrocinadores() {
               <button
                 key={p.id}
                 onClick={() => setRascunho({ ...novoPatrocinador(), ...p })}
-                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${ativo ? 'bg-marca-50' : 'hover:bg-slate-50'}`}
+                className={`flex w-full items-center gap-3 border-l-4 px-4 py-4 text-left transition ${ativo ? 'border-marca-600 bg-marca-50' : 'border-transparent hover:bg-slate-50'}`}
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-slate-500">
+                <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-slate-500">
                   {p.logo_url ? <img src={p.logo_url} alt="" className="h-full w-full bg-white object-contain p-1" /> : <Ic size={20} />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className={`block truncate text-sm font-semibold ${ativo ? 'text-marca-800' : ''}`}>{p.nome || 'Sem nome'}</span>
-                  <span className="block truncate text-xs text-slate-500">{modalidadeTexto(p)}</span>
+                  <span className={`block truncate text-base font-semibold ${ativo ? 'text-marca-800' : ''}`}>{p.nome || 'Sem nome'}</span>
+                  <span className="block truncate text-sm text-slate-500">{modalidadeTexto(p)}</span>
                 </span>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${sit.cor}`}>{sit.texto}</span>
               </button>
@@ -195,7 +195,7 @@ export default function Patrocinadores() {
 
       {/* Formulário + prévia */}
       {rascunho ? (
-        <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0">
           <div className="min-w-0 space-y-5">
             <Etapa numero={1} titulo="Tipo de anúncio">
               <div className="grid gap-4 md:grid-cols-2">
@@ -245,6 +245,13 @@ export default function Patrocinadores() {
             {rascunho.tipo === 'video' && <ConteudoVideo p={rascunho} set={set} />}
             {rascunho.tipo === 'simples' && <ConteudoSimples p={rascunho} set={set} />}
             {rascunho.tipo === 'automatico' && <ConteudoAutomatico p={rascunho} set={set} />}
+            {antigo && (
+              <Secao titulo="Prévia do anúncio antigo">
+                <PreviaCelular titulo="">
+                  <PecaAnuncio p={rascunho} />
+                </PreviaCelular>
+              </Secao>
+            )}
             {rascunho.tipo === 'banners' && (
               <Etapa numero={3} titulo="Banners verticais (anúncios de 15 s e 30 s)">
                 <EditorBanners p={rascunho} set={set} formato="vertical" />
@@ -275,23 +282,6 @@ export default function Patrocinadores() {
                   <Trash2 size={15} /> Excluir
                 </Botao>
               )}
-            </div>
-          </div>
-
-          {/* Prévia */}
-          <div className="2xl:sticky 2xl:top-24 2xl:self-start">
-            <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-slate-400">Prévia no celular</p>
-            <div className="mx-auto w-full max-w-[340px] overflow-hidden rounded-[2.5rem] border-[10px] border-slate-800 bg-slate-50 shadow-2xl">
-              <div className="max-h-[680px] min-h-[420px] overflow-y-auto p-4 no-scrollbar">
-                <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
-                <PecaAnuncio key={`${rascunho.tipo}-${rascunho.layout}-${rascunho.video_url}`} p={rascunho} />
-                {(rascunho.banners_horizontais?.length > 0 || rascunho.banner_url) && (
-                  <>
-                    <p className="mb-2 mt-6 text-center text-xs font-bold uppercase tracking-widest text-slate-500">Banner das outras posições</p>
-                    <PreviaBanner p={rascunho} />
-                  </>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -403,7 +393,17 @@ function EditorBanners({ p, set, formato = 'vertical', aviso: avisoVazio }) {
         )}
       </div>
       {aviso && <p className="text-sm font-semibold text-ouro-700">{aviso}</p>}
-      {!banners.length && avisoVazio && <p className="text-xs text-slate-500">{avisoVazio}</p>}
+      {!banners.length && avisoVazio && <p className="text-sm text-slate-500">{avisoVazio}</p>}
+      {banners.length > 0 &&
+        (formato === 'vertical' ? (
+          <PreviaCelular titulo="Prévia: anúncio de banners no celular">
+            <PecaAnuncio key={banners.join()} p={{ ...p, tipo: 'banners' }} alturaVertical="400px" />
+          </PreviaCelular>
+        ) : (
+          <PreviaCelular titulo="Prévia: banner na tela inicial e nas telas de espera" rotulo="Patrocínio">
+            <PreviaBanner p={p} />
+          </PreviaCelular>
+        ))}
     </div>
   )
 }
@@ -558,13 +558,28 @@ function OndeMostrar({ p, set }) {
 
 function Etapa({ numero, titulo, children }) {
   return (
-    <Card className="p-6">
-      <p className="mb-4 flex items-center gap-3 text-base font-semibold">
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-900 text-sm text-white">{numero}</span>
-        {titulo}
-      </p>
+    <Secao numero={numero} titulo={titulo}>
       {children}
-    </Card>
+    </Secao>
+  )
+}
+
+/** Celular pequeno com a prévia de como o anúncio aparece no app. */
+function PreviaCelular({ titulo = 'Prévia no app', rotulo = 'Anúncio', children }) {
+  return (
+    <div className="mt-6">
+      <p className="mb-3 text-center text-sm font-bold text-slate-700">{titulo}</p>
+      <div className="mx-auto w-[280px] overflow-hidden rounded-[2.2rem] border-[9px] border-slate-800 bg-slate-50 shadow-xl">
+        <div className="fundo-marca flex items-center justify-between px-3 py-2">
+          <img src="/logo-difusora-branco.png" alt="" className="h-6 w-auto" />
+          <span className="text-[9px] font-extrabold uppercase tracking-wider text-ouro-300">Pergunta da Hora</span>
+        </div>
+        <div className="p-3">
+          <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">{rotulo}</p>
+          {children}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -709,7 +724,7 @@ function ConteudoVideo({ p, set }) {
               <input type="file" accept="video/mp4,video/quicktime" className="hidden" disabled={enviando} onChange={(e) => escolherArquivo(e.target.files?.[0])} />
             </label>
             {ehArquivoVideo(p.video_url) && !enviando && (
-              <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">Vídeo enviado. O tempo na tela foi ajustado para a duração dele. Veja a prévia ao lado.</p>
+              <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">Vídeo enviado. Veja a prévia abaixo.</p>
             )}
             {erro && <p className="text-sm font-semibold text-red-600">{erro}</p>}
             <p className="text-xs leading-relaxed text-slate-500">
@@ -733,7 +748,7 @@ function ConteudoVideo({ p, set }) {
           {id && (
             <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
               <img src={`https://i.ytimg.com/vi/${id}/mqdefault.jpg`} alt="" className="h-14 w-24 rounded-lg object-cover" />
-              <span>Vídeo reconhecido. Veja a prévia ao lado.</span>
+              <span>Vídeo reconhecido. Veja a prévia abaixo.</span>
             </div>
           )}
           <div className="flex flex-wrap gap-3">
@@ -762,6 +777,11 @@ function ConteudoVideo({ p, set }) {
           </>
         )}
       </div>
+      {(id || ehArquivoVideo(p.video_url)) && (
+        <PreviaCelular titulo="Prévia: assim o vídeo aparece no celular">
+          <PecaAnuncio key={`${p.video_url}-${p.video_vertical}`} p={{ ...p, tipo: 'video' }} alturaVertical="400px" />
+        </PreviaCelular>
+      )}
     </Etapa>
   )
 }
