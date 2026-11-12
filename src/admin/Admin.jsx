@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
 import { Carregando, TelaLogin, useAuth } from '../auth.jsx'
-import { comSegundos, diaMes, fmt, fmtHorario, hojeSP, segundosEntre, somarSegundos, useDados, useRanking } from '../store.jsx'
+import { comSegundos, diaMes, fmt, fmtHorario, hojeSP, horaFalada, horaSP, segundosEntre, somarSegundos, useDados, useRanking } from '../store.jsx'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { diferencaDoAparelhoMs, fmtFalta, fmtHora, instanteRodada, relogioSincronizado, useRelogio } from '../relogio.js'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
@@ -17,7 +17,7 @@ import { ESPACOS } from '../anuncios.jsx'
 const ABAS = [
   { id: 'aovivo', grupo: 'Programa', nome: 'Ao vivo', icone: RadioTower, descricao: 'Solte as perguntas no ar e acompanhe as respostas em tempo real.', cor: 'bg-marca-100 text-marca-600' },
   { id: 'rodadas', grupo: 'Conteúdo', nome: 'Rodadas', icone: ListChecks, descricao: 'Perguntas, horários, pontos e agendamento de cada rodada.', cor: 'bg-violet-100 text-violet-600' },
-  { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Anúncios simples, vídeos do YouTube ou montados automaticamente.', cor: 'bg-ouro-100 text-ouro-600' },
+  { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Vídeos do YouTube e banners, com rodízio ou horário fixo e período de circulação.', cor: 'bg-ouro-100 text-ouro-600' },
   { id: 'exibicoes', grupo: 'Conteúdo', nome: 'Exibições', icone: BarChart3, descricao: 'Quantas vezes cada patrocinador apareceu em cada espaço.', cor: 'bg-sky-100 text-sky-600' },
   { id: 'premios', grupo: 'Conteúdo', nome: 'Prêmios', icone: Gift, descricao: 'O que os primeiros colocados do ranking ganham.', cor: 'bg-emerald-100 text-emerald-600' },
   { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação dos ouvintes pelos pontos.', cor: 'bg-ouro-100 text-ouro-600' },
@@ -626,7 +626,6 @@ function agendaTexto(r) {
 }
 
 function validarRodada(r) {
-  if (!r.categoria?.trim()) return 'Preencha a categoria (o assunto da pergunta).'
   if (!r.pergunta.trim()) return 'Preencha a pergunta.'
   if (!r.alternativas.every((a) => a.trim())) return 'Preencha as quatro alternativas.'
   return validarAgenda(r)
@@ -687,8 +686,31 @@ function ImagemPergunta({ url, aoMudar }) {
   )
 }
 
+// As perguntas são diárias, a cada meia hora, a partir das 9h
+const PRIMEIRA_RODADA = '09:00:00'
+const INTERVALO_RODADAS_MIN = 30
+
+/** Próximo horário livre na grade (9h, 9h30, 10h…), de hoje em diante, com o mesmo tempo no ar da última rodada. */
+function proximaVaga(rodadas = []) {
+  const ocupados = new Set(rodadas.map((r) => `${r.data} ${comSegundos(r.horario)}`))
+  const ultima = [...rodadas].filter((r) => r.data && r.horario_fim).sort((a, b) => `${b.data}${b.horario}`.localeCompare(`${a.data}${a.horario}`))[0]
+  const noAr = ultima ? segundosEntre(comSegundos(ultima.horario), comSegundos(ultima.horario_fim)) : 45
+  const agora = horaSP()
+  let dia = hojeSP()
+  for (let d = 0; d < 60; d++) {
+    for (let m = 0; segundosEntre('00:00:00', PRIMEIRA_RODADA) + m * 60 < 24 * 3600; m += INTERVALO_RODADAS_MIN) {
+      const horario = somarSegundos(PRIMEIRA_RODADA, m * 60)
+      if (d === 0 && horario.slice(0, 5) <= agora) continue
+      if (!ocupados.has(`${dia} ${horario}`)) return { data: dia, horario, horario_fim: somarSegundos(horario, noAr > 0 ? noAr : 45) }
+    }
+    const amanha = new Date(`${dia}T12:00:00Z`)
+    amanha.setUTCDate(amanha.getUTCDate() + 1)
+    dia = amanha.toISOString().slice(0, 10)
+  }
+  return { data: hojeSP(), horario: PRIMEIRA_RODADA, horario_fim: somarSegundos(PRIMEIRA_RODADA, 45) }
+}
+
 function Rodadas() {
-  const { patrocinadores } = useDados()
   const { itens, recarregar } = useTabela(() => supabase.from('rodadas').select('*, rodadas_conteudo(*)').order('data', { ascending: true, nullsFirst: true }).order('horario'))
   // Junta a parte pública e a secreta da rodada num único formulário.
   const lista = itens?.map(({ rodadas_conteudo: emb, ...r }) => {
@@ -710,9 +732,9 @@ function Rodadas() {
     rodada.horario = comSegundos(rodada.horario)
     rodada.horario_fim = comSegundos(rodada.horario_fim) || null
     rodada.patrocinador_fixo = rodada.patrocinador_fixo || null
-    // Sem campo de título: o nome da rodada (painel, histórico e notificações) é a categoria
-    rodada.categoria = rodada.categoria.trim()
-    rodada.titulo = rodada.categoria
+    // O nome da rodada (painel, histórico e notificações) é o horário: "Pergunta das 9h30"
+    rodada.categoria = ''
+    rodada.titulo = `Pergunta das ${horaFalada(rodada.horario)}`
     rodada.descricao = ''
     const { error } = await supabase.from('rodadas').upsert(rodada)
     if (error) throw error
@@ -730,11 +752,9 @@ function Rodadas() {
       salvar={salvar}
       novo={() => ({
         id: crypto.randomUUID(),
-        modo: 'manual',
+        modo: 'automatico',
         patrocinador_fixo: null,
-        data: hojeSP(),
-        horario: '14:00:00',
-        horario_fim: '14:00:45',
+        ...proximaVaga(lista),
         categoria: '',
         titulo: '',
         descricao: '',
@@ -755,7 +775,7 @@ function Rodadas() {
             {r.data && <span className="block text-[10px] text-slate-500">{diaMes(r.data)}</span>}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{r.categoria || r.titulo || 'Sem categoria'}</p>
+            <p className="truncate text-sm font-semibold">Pergunta das {horaFalada(r.horario)}</p>
             <p className="truncate text-xs text-slate-500">{agendaTexto(r)} • +{fmt(r.pontos)} pts</p>
           </div>
           {r.status === 'no_ar' ? <Selo>No ar</Selo> : r.modo === 'automatico' && <Selo cor="slate" className="normal-case">Auto</Selo>}
@@ -830,19 +850,6 @@ function Rodadas() {
             </p>
             {validarAgenda(r) && <p className="text-xs font-semibold text-marca-600">{validarAgenda(r)}</p>}
           </div>
-          <Campo rotulo="Patrocinador dos anúncios desta rodada" className="sm:col-span-6">
-            <select value={r.patrocinador_fixo ?? ''} onChange={(e) => set('patrocinador_fixo', e.target.value || null)} className={inputCls}>
-              <option value="">Rodízio automático (conforme o peso de cada patrocinador)</option>
-              {patrocinadores.map((p) => (
-                <option key={p.id} value={p.id}>
-                  Fixo: {p.nome}
-                </option>
-              ))}
-            </select>
-            <span className="mt-1 block text-[11px] text-slate-500">
-              Fixo: os dois anúncios da rodada são desse patrocinador ("rodada oferecida por…"). Vale da próxima vez que a rodada entrar no ar.
-            </span>
-          </Campo>
           <Campo rotulo="Nível" className="sm:col-span-2">
             <select value={r.nivel} onChange={(e) => set('nivel', e.target.value)} className={inputCls}>
               {NIVEIS.map((n) => (
@@ -863,9 +870,6 @@ function Rodadas() {
             </div>
             <span className="mt-1 block text-[11px] text-slate-400">Use valores quebrados (ex.: 53,75) para evitar empates no ranking.</span>
           </div>
-          <Campo rotulo="Categoria (o assunto: o ouvinte vê “a próxima pergunta será sobre…”)" className="sm:col-span-6">
-            <Texto valor={r.categoria} onChange={(v) => set('categoria', v)} placeholder="ex.: Música popular brasileira" />
-          </Campo>
           <Campo rotulo="Pergunta (só aparece depois do anúncio)" className="sm:col-span-6">
             <Texto multilinha valor={r.pergunta} onChange={(v) => set('pergunta', v)} />
           </Campo>
@@ -897,14 +901,17 @@ function Premios() {
       tabela="premios"
       itens={itens}
       recarregar={recarregar}
-      novo={() => ({ id: crypto.randomUUID(), colocacao: (itens?.length ?? 0) + 1, titulo: '', oferecido_por: '' })}
+      novo={() => ({ id: crypto.randomUUID(), colocacao: (itens?.length ?? 0) + 1, titulo: '', oferecido_por: '', data_final: null })}
       validar={(p) => p.titulo.trim() && p.colocacao > 0}
       renderItem={(p) => (
         <div className="flex items-center gap-3">
           <span className="grid h-9 w-9 place-items-center rounded-lg bg-ouro-50 font-display text-sm text-ouro-600">{p.colocacao}º</span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{p.titulo || 'Sem título'}</p>
-            <p className="truncate text-xs text-slate-500">{p.oferecido_por}</p>
+            <p className="truncate text-xs text-slate-500">
+              {p.oferecido_por}
+              {p.data_final ? ` · final em ${diaMes(p.data_final)}/${p.data_final.slice(0, 4)}` : ''}
+            </p>
           </div>
         </div>
       )}
@@ -916,7 +923,11 @@ function Premios() {
           <Campo rotulo="Prêmio" className="sm:col-span-3">
             <Texto valor={p.titulo} onChange={(v) => set('titulo', v)} />
           </Campo>
-          <Campo rotulo="Oferecido por" className="sm:col-span-4">
+          <Campo rotulo="Data da pergunta final" className="sm:col-span-2">
+            <input type="date" value={p.data_final ?? ''} onChange={(e) => set('data_final', e.target.value || null)} className={inputCls} />
+            <span className="mt-1 block text-[11px] text-slate-500">O ouvinte vê: "A pergunta final será dia 15/12/2026".</span>
+          </Campo>
+          <Campo rotulo="Oferecido por" className="sm:col-span-2">
             <select value={p.oferecido_por} onChange={(e) => set('oferecido_por', e.target.value)} className={inputCls}>
               <option value="">— Selecione um patrocinador —</option>
               {patrocinadores.map((pt) => (

@@ -134,8 +134,8 @@ export const horaSP = () => agoraServidor().toLocaleTimeString('pt-BR', { timeZo
 export const diaMes = (data) => (data ? `${data.slice(8, 10)}/${data.slice(5, 7)}` : '')
 /** "10:30:00" → "10:30"; "10:30:45" fica com os segundos. */
 export const fmtHorario = (h) => (h && h.length > 5 && h.endsWith(':00') ? h.slice(0, 5) : h ?? '')
-/** Nome da rodada para o ouvinte: a categoria (rodadas antigas sem categoria usam o título). */
-export const nomeRodada = (r) => r?.categoria?.trim() || r?.titulo || ''
+/** Nome da rodada para o ouvinte: "Pergunta das 9h30". */
+export const nomeRodada = (r) => (r?.horario ? `Pergunta das ${horaFalada(r.horario)}` : r?.titulo || '')
 /** "10:00" → "10 horas", "10:30" → "10h30", "10:30:15" → "10h30min15s" */
 export const horaFalada = (h) => {
   const [hh, mm, ss = '00'] = (h ?? '').split(':')

@@ -179,7 +179,15 @@ function Moldura({ banner = false, children }) {
         <span className="text-sm font-extrabold uppercase tracking-wider text-ouro-300">Pergunta da Hora</span>
       </div>
       <div className="no-scrollbar flex-1 overflow-y-auto px-4 pb-6 pt-4">{children}</div>
-      {banner && <BannerPatrocinadores patrocinadores={patrocinadores} espaco="banner_espera" className="mx-4 mb-4 h-24 shrink-0 rounded-2xl shadow-md ring-1 ring-slate-200" />}
+      {/* banner 16:9, limitado para não tomar a tela de espera */}
+      {banner && (
+        <BannerPatrocinadores
+          patrocinadores={patrocinadores}
+          espaco="banner_espera"
+          className="mx-auto mb-3 aspect-video shrink-0 rounded-2xl shadow-md ring-1 ring-slate-200"
+          style={{ width: 'min(calc(100% - 2rem), 36vh)' }}
+        />
+      )}
     </div>
   )
 }
@@ -318,7 +326,7 @@ function Anuncio({ ativo, espaco, segundos, ate, patrocinador, aoTerminar, titul
         ) : (
           <ContagemAnuncio segundos={segundos} aoTerminar={terminar} titulo={titulo} texto={texto} cor={cor} />
         ))}
-      <div className="flex flex-1 flex-col justify-center gap-4 py-6">
+      <div className="flex flex-1 flex-col justify-center gap-2 py-3">
         {videoAcabou ? (
           <div className="rounded-3xl bg-white p-8 text-center ring-2 ring-slate-200">
             <Loader2 className="mx-auto animate-spin text-marca-600" size={40} />
@@ -339,7 +347,7 @@ function Anuncio({ ativo, espaco, segundos, ate, patrocinador, aoTerminar, titul
 
 function BannerEspera() {
   const { patrocinadores } = useDados()
-  return <BannerPatrocinadores patrocinadores={patrocinadores} espaco="banner_espera" className="mt-6 h-24 rounded-2xl text-left shadow-md" />
+  return <BannerPatrocinadores patrocinadores={patrocinadores} espaco="banner_espera" className="mt-6 aspect-video w-full rounded-2xl text-left shadow-md" />
 }
 
 /** Contagem até um instante (relógio do servidor), para todos os celulares virarem juntos. */
