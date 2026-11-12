@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, CalendarDays, Check, Clapperboard, Clock, ImagePlus, Images, Loader2, Megaphone, Plus, Save, Search, Shuffle, Trash2, X } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Check, Clapperboard, Clock, ImagePlus, Images, LayoutTemplate, Loader2, Megaphone, Plus, Save, Search, Shuffle, Trash2, X } from 'lucide-react'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { CORES, Card, ICONES_PATROCINADOR, Icone, Vazio } from '../ui.jsx'
 import { Carregando } from '../auth.jsx'
 import { DURACOES } from '../config.js'
 import { hojeSP } from '../store.jsx'
-import { ESPACOS, LAYOUTS, PecaAnuncio, PreviaBanner, ehArquivoVideo, ehShorts, youtubeId } from '../anuncios.jsx'
+import { LAYOUTS, PecaAnuncio, PreviaBanner, ehArquivoVideo, ehShorts, youtubeId } from '../anuncios.jsx'
 import { Botao, Campo, Texto, enviarImagem, enviarVideo, inputCls, reduzirFoto, useTabela } from './comum.jsx'
 
 const TIPOS = [

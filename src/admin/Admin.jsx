@@ -9,7 +9,7 @@ import { comSegundos, diaMes, fmt, fmtHorario, hojeSP, horaFalada, horaSP, segun
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { diferencaDoAparelhoMs, fmtFalta, fmtHora, instanteRodada, relogioSincronizado, useRelogio } from '../relogio.js'
 import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../historico.jsx'
-import { Avatar, CORES, Card, ICONES_PATROCINADOR, Icone, Selo, Vazio } from '../ui.jsx'
+import { Avatar, Card, Selo, Vazio } from '../ui.jsx'
 import { Botao, Campo, Numero, Texto, enviarImagem, inputCls, reduzirFoto, useTabela } from './comum.jsx'
 import Patrocinadores from './Patrocinadores.jsx'
 import { ESPACOS } from '../anuncios.jsx'
