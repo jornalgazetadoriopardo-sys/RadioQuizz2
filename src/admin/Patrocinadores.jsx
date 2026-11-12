@@ -248,7 +248,7 @@ export default function Patrocinadores() {
               <EditorBanners p={rascunho} set={set} obrigatorio={rascunho.tipo === 'banners'} />
             </Etapa>
 
-            <Etapa numero={passoBanners + 1} titulo="Circulação e modalidade">
+            <Etapa numero={passoBanners + 1} titulo="Onde, quando e quantas vezes">
               <Circulacao p={rascunho} set={set} />
             </Etapa>
 
@@ -371,25 +371,11 @@ function EditorBanners({ p, set, obrigatorio }) {
 function Circulacao({ p, set }) {
   const [novoHorario, setNovoHorario] = useState('17:00')
   const indeterminado = !p.fim
-  const marcar = (id, sim) => set('espacos', sim ? [...new Set([...(p.espacos ?? []), id])] : (p.espacos ?? []).filter((e) => e !== id))
   const horarios = p.horarios_fixos ?? []
 
   return (
     <div className="space-y-6">
-      <Campo rotulo="Tempo do anúncio na tela (segundos)" className="max-w-sm">
-        <input
-          type="number"
-          min="5"
-          max="120"
-          value={p.duracao_segundos ?? ''}
-          onChange={(e) => set('duracao_segundos', e.target.value ? Math.min(120, Math.max(5, Number(e.target.value))) : null)}
-          placeholder={`Padrão: ${DURACOES.anuncioPergunta} s`}
-          className={inputCls}
-        />
-        <span className="mt-1 block text-[11px] text-slate-500">
-          {p.tipo === 'video' ? 'Use a duração do vídeo (até 120 s). Para MP4 é preenchido sozinho.' : 'Quanto tempo os banners ficam na tela antes da pergunta ou do resultado.'}
-        </span>
-      </Campo>
+      <OndeMostrar p={p} set={set} />
       <div>
         <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
           <CalendarDays size={16} className="text-marca-600" /> Período de circulação
@@ -479,21 +465,52 @@ function Circulacao({ p, set }) {
         )}
       </div>
 
-      <div>
-        <p className="mb-2 text-sm font-semibold">Espaços onde aparece</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {ESPACOS.map((e) => (
-            <label key={e.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl p-3 ring-2 transition ${p.espacos?.includes(e.id) ? 'bg-marca-50 ring-marca-400' : 'bg-white ring-slate-200'}`}>
-              <input type="checkbox" checked={!!p.espacos?.includes(e.id)} onChange={(ev) => marcar(e.id, ev.target.checked)} className="mt-0.5 h-5 w-5 accent-marca-600" />
-              <span>
-                <span className="block text-sm font-semibold">{e.nome}</span>
-                <span className="block text-xs leading-relaxed text-slate-500">{e.texto}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <p className="mt-2 text-[11px] text-slate-500">Os espaços de banner só mostram anunciantes que têm banners cadastrados.</p>
+    </div>
+  )
+}
+
+// Onde o anúncio pode aparecer (os banners da tela inicial e das telas de espera andam juntos)
+const ONDE_MOSTRAR = [
+  {
+    espacos: ['anuncio_pergunta'],
+    nome: `${DURACOES.anuncioPergunta} segundos antes de responder`,
+    texto: `Depois de "Vou participar", antes da pergunta. Vídeos com mais de ${DURACOES.anuncioPergunta} s são cortados.`,
+  },
+  {
+    espacos: ['anuncio_resultado'],
+    nome: `${DURACOES.anuncioGabarito} segundos depois de responder`,
+    texto: `Depois de "Confira sua resposta", antes do resultado. Vídeos com mais de ${DURACOES.anuncioGabarito} s são cortados.`,
+  },
+  {
+    espacos: ['banner_inicio', 'banner_espera'],
+    nome: 'Banners em outras posições',
+    texto: 'Tela inicial e faixa das telas de espera e do resultado. Precisa ter banners cadastrados.',
+  },
+]
+
+function OndeMostrar({ p, set }) {
+  const marcado = (o) => o.espacos.every((e) => p.espacos?.includes(e))
+  const marcar = (o, sim) => {
+    const atuais = (p.espacos ?? []).filter((e) => !o.espacos.includes(e))
+    set('espacos', sim ? [...atuais, ...o.espacos] : atuais)
+  }
+  return (
+    <div>
+      <p className="mb-2 text-sm font-semibold">Onde será mostrado</p>
+      <div className="grid gap-3 md:grid-cols-3">
+        {ONDE_MOSTRAR.map((o) => (
+          <label key={o.nome} className={`flex cursor-pointer items-start gap-3 rounded-2xl p-3 ring-2 transition ${marcado(o) ? 'bg-marca-50 ring-marca-400' : 'bg-white ring-slate-200'}`}>
+            <input type="checkbox" checked={marcado(o)} onChange={(ev) => marcar(o, ev.target.checked)} className="mt-0.5 h-5 w-5 accent-marca-600" />
+            <span>
+              <span className="block text-sm font-semibold">{o.nome}</span>
+              <span className="block text-xs leading-relaxed text-slate-500">{o.texto}</span>
+            </span>
+          </label>
+        ))}
       </div>
+      {p.tipo === 'video' && !p.banners?.length && marcado(ONDE_MOSTRAR[2]) && (
+        <p className="mt-2 text-xs font-semibold text-ouro-700">Este anunciante ainda não tem banners: ele só vai aparecer nos anúncios das rodadas.</p>
+      )}
     </div>
   )
 }

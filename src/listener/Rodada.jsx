@@ -69,7 +69,8 @@ export default function Rodada({ aoSair }) {
 
   // "Vou participar": o anúncio começa no próprio toque (é o que libera o som, inclusive no iPhone).
   // A pergunta abre para todos no mesmo instante: fim do tempo da rodada + duração do anúncio.
-  const segundosAnuncio1 = curto ?? patrocinador1?.duracao_segundos ?? DURACOES.anuncioPergunta
+  // Tempos fixos dos espaços: 15 s antes de responder e 30 s depois (o vídeo mais longo é cortado)
+  const segundosAnuncio1 = curto ?? DURACOES.anuncioPergunta
   const participar = () => {
     liberarVideos() // precisa ser no próprio toque, antes de qualquer espera
     const agora = agoraServidor().getTime()
@@ -155,7 +156,7 @@ export default function Rodada({ aoSair }) {
         <Anuncio
           key="a2"
           ativo={etapa === 'anuncio2'}
-          segundos={curto ?? patrocinador2?.duracao_segundos ?? DURACOES.anuncioGabarito}
+          segundos={curto ?? DURACOES.anuncioGabarito}
           espaco="anuncio_resultado"
           patrocinador={patrocinador2}
           aoTerminar={() => setEtapa('resultado')}
