@@ -3,9 +3,8 @@ import { AlertTriangle, CalendarDays, Check, Clapperboard, Clock, ImagePlus, Ima
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { CORES, Card, ICONES_PATROCINADOR, Icone, Vazio } from '../ui.jsx'
 import { Carregando } from '../auth.jsx'
-import { DURACOES } from '../config.js'
 import { hojeSP } from '../store.jsx'
-import { LAYOUTS, PecaAnuncio, PreviaBanner, ehArquivoVideo, ehShorts, youtubeId } from '../anuncios.jsx'
+import { LAYOUTS, PecaAnuncio, PreviaBanner, ehArquivoVideo, ehShorts, patrocinadoresDoEspaco, youtubeId } from '../anuncios.jsx'
 import { Botao, Campo, Secao, Texto, enviarImagem, enviarVideo, inputCls, reduzirFoto, useTabela } from './comum.jsx'
 
 const TIPOS = [
@@ -97,6 +96,7 @@ export default function Patrocinadores() {
   const [erro, setErro] = useState('')
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState('todos')
+  const [avisoGrade, setAvisoGrade] = useState('')
 
   useEffect(() => {
     if (!rascunho && itens?.length) setRascunho({ ...novoPatrocinador(), ...itens[0] })
@@ -115,7 +115,7 @@ export default function Patrocinadores() {
     setEstado('salvando')
     setErro('')
     const registro = Object.fromEntries(COLUNAS.map((k) => [k, rascunho[k]]))
-    registro.duracao_segundos = registro.duracao_segundos || null
+    registro.duracao_segundos = (registro.duracao_segundos ?? 15) > 15 ? 30 : 15
     registro.inicio = registro.inicio || null
     registro.fim = registro.fim || null
     registro.vezes_dia = Math.min(50, Math.max(1, Number(registro.vezes_dia) || 1))
@@ -125,9 +125,15 @@ export default function Patrocinadores() {
       setEstado('')
       return setErro(mensagemDeErro(error))
     }
+    // encaixa o anunciante nas posições vagas da grade (não muda nada que já está programado)
+    const fimProximoMes = new Date(`${hojeSP().slice(0, 7)}-01T12:00:00Z`)
+    fimProximoMes.setUTCMonth(fimProximoMes.getUTCMonth() + 2, 0)
+    const { data: prog } = await supabase.rpc('programar_grade', { p_de: hojeSP(), p_ate: fimProximoMes.toISOString().slice(0, 10) })
     await recarregar()
     setEstado('salvo')
-    setTimeout(() => setEstado(''), 2000)
+    const minhas = (prog?.pendencias ?? []).filter((x) => x.patrocinador === registro.nome)
+    setAvisoGrade(minhas.length ? `Atenção: ${minhas.length} inserção(ões) de ${registro.nome} ficaram sem vaga na grade (ex.: ${minhas[0].data}${minhas[0].horario ? ' às ' + minhas[0].horario : ''}). Veja na aba Grade.` : '')
+    setTimeout(() => setEstado(''), 2500)
   }
 
   const excluir = async () => {
@@ -197,6 +203,7 @@ export default function Patrocinadores() {
       {rascunho ? (
         <div className="min-w-0">
           <div className="min-w-0 space-y-5">
+            <BannerHomeSituacao itens={itens} />
             <Etapa numero={1} titulo="Tipo de anúncio">
               <div className="grid gap-4 md:grid-cols-2">
                 {TIPOS.map((t) => (
@@ -275,7 +282,8 @@ export default function Patrocinadores() {
                 {estado === 'salvando' ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Salvar patrocinador
               </Botao>
               {problema && <span className="text-sm font-semibold text-ouro-700">{problema}</span>}
-              {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo! Os celulares já foram atualizados.</span>}
+              {estado === 'salvo' && <span className="text-sm font-semibold text-emerald-600">Salvo e encaixado na grade!</span>}
+              {avisoGrade && <span className="w-full text-sm font-semibold text-ouro-700">{avisoGrade}</span>}
               {erro && <span className="text-sm font-semibold text-red-600">{erro}</span>}
               {existe && (
                 <Botao variante="perigo" className="ml-auto" onClick={excluir}>
@@ -511,22 +519,30 @@ function Circulacao({ p, set }) {
 }
 
 // Onde o anúncio pode aparecer (os banners da tela inicial e das telas de espera andam juntos)
+/** Quantos anunciantes estão no Banner home agora (e o que falta quando não há nenhum). */
+function BannerHomeSituacao({ itens }) {
+  const naHome = patrocinadoresDoEspaco(itens, 'banner_inicio')
+  if (naHome.length)
+    return (
+      <p className="rounded-2xl bg-emerald-50 px-5 py-3 text-sm text-emerald-800 ring-1 ring-emerald-200">
+        <b>Banner home:</b> {naHome.map((p) => p.nome).join(', ')}
+        {naHome.length > 1 ? ' (passando um após o outro)' : ' (fixo)'}
+      </p>
+    )
+  return (
+    <p className="rounded-2xl bg-ouro-50 px-5 py-3 text-sm text-ouro-900 ring-1 ring-ouro-200">
+      <b>Nenhum anunciante aparece no Banner home agora.</b> Para aparecer na tela inicial, o anunciante precisa estar em circulação,
+      com "Banner home" marcado e pelo menos um banner horizontal enviado.
+    </p>
+  )
+}
+
+// Onde o anunciante pode aparecer
 const ONDE_MOSTRAR = [
-  {
-    espacos: ['anuncio_pergunta'],
-    nome: `${DURACOES.anuncioPergunta} segundos antes de responder`,
-    texto: `Depois de "Vou participar", antes da pergunta. Vídeos com mais de ${DURACOES.anuncioPergunta} s são cortados.`,
-  },
-  {
-    espacos: ['anuncio_resultado'],
-    nome: `${DURACOES.anuncioGabarito} segundos depois de responder`,
-    texto: `Depois de "Confira sua resposta", antes do resultado. Vídeos com mais de ${DURACOES.anuncioGabarito} s são cortados.`,
-  },
-  {
-    espacos: ['banner_inicio', 'banner_espera'],
-    nome: 'Banners em outras posições',
-    texto: 'Tela inicial e telas de espera e do resultado. Usa os banners horizontais.',
-  },
+  { espacos: ['anuncio_pergunta'], nome: 'Antes de responder', texto: 'Anúncio depois de "Vou participar", antes da pergunta (posição "antes" da grade).' },
+  { espacos: ['anuncio_resultado'], nome: 'Depois de responder', texto: 'Anúncio depois de "Confira sua resposta", antes do resultado (posição "depois" da grade).' },
+  { espacos: ['banner_inicio'], nome: 'Banner home', texto: 'Banner da tela inicial do app. Com um só anunciante fica fixo; com mais, passa sozinho.' },
+  { espacos: ['banner_espera'], nome: 'Banner das telas de espera', texto: 'Telas de espera e do resultado.' },
 ]
 
 function OndeMostrar({ p, set }) {
@@ -535,23 +551,41 @@ function OndeMostrar({ p, set }) {
     const atuais = (p.espacos ?? []).filter((e) => !o.espacos.includes(e))
     set('espacos', sim ? [...atuais, ...o.espacos] : atuais)
   }
+  const duracao = (p.duracao_segundos ?? 15) > 15 ? 30 : 15
+  const semHorizontal = !p.banners_horizontais?.length && !p.banner_url && (marcado(ONDE_MOSTRAR[2]) || marcado(ONDE_MOSTRAR[3]))
   return (
-    <div>
-      <p className="mb-2 text-sm font-semibold">Onde será mostrado</p>
-      <div className="grid gap-3 md:grid-cols-3">
-        {ONDE_MOSTRAR.map((o) => (
-          <label key={o.nome} className={`flex cursor-pointer items-start gap-3 rounded-2xl p-3 ring-2 transition ${marcado(o) ? 'bg-marca-50 ring-marca-400' : 'bg-white ring-slate-200'}`}>
-            <input type="checkbox" checked={marcado(o)} onChange={(ev) => marcar(o, ev.target.checked)} className="mt-0.5 h-5 w-5 accent-marca-600" />
-            <span>
-              <span className="block text-sm font-semibold">{o.nome}</span>
-              <span className="block text-xs leading-relaxed text-slate-500">{o.texto}</span>
-            </span>
-          </label>
-        ))}
+    <div className="space-y-5">
+      <div>
+        <p className="mb-2 text-sm font-semibold">Onde será mostrado</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {ONDE_MOSTRAR.map((o) => (
+            <label key={o.nome} className={`flex cursor-pointer items-start gap-3 rounded-2xl p-4 ring-2 transition ${marcado(o) ? 'bg-marca-50 ring-marca-400' : 'bg-white ring-slate-200'}`}>
+              <input type="checkbox" checked={marcado(o)} onChange={(ev) => marcar(o, ev.target.checked)} className="mt-0.5 h-5 w-5 accent-marca-600" />
+              <span>
+                <span className="block text-base font-semibold">{o.nome}</span>
+                <span className="mt-0.5 block text-sm leading-relaxed text-slate-500">{o.texto}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {semHorizontal && <p className="mt-2 text-sm font-semibold text-ouro-700">Este anunciante ainda não tem banners horizontais: ele não vai aparecer no Banner home nem nas telas de espera.</p>}
       </div>
-      {!p.banners_horizontais?.length && !p.banner_url && marcado(ONDE_MOSTRAR[2]) && (
-        <p className="mt-2 text-xs font-semibold text-ouro-700">Este anunciante ainda não tem banners horizontais: ele não vai aparecer nas outras posições.</p>
-      )}
+      <div>
+        <p className="mb-2 text-sm font-semibold">Duração do anúncio (antes ou depois de responder)</p>
+        <div className="flex gap-3">
+          {[15, 30].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => set('duracao_segundos', s)}
+              className={`rounded-2xl px-6 py-3 text-base font-bold ring-2 transition ${duracao === s ? 'bg-marca-700 text-white ring-marca-700' : 'bg-white text-slate-700 ring-slate-200 hover:ring-slate-300'}`}
+            >
+              {s} segundos
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-sm text-slate-500">Vídeos mais longos que a duração são cortados.</p>
+      </div>
     </div>
   )
 }

@@ -17,6 +17,9 @@ import { agoraServidor, instanteRodada, useRelogio } from '../relogio.js'
 // Ao confirmar, o servidor guarda a vaga: quem entrou com a rodada no ar responde mesmo que ela feche durante o anúncio.
 // O servidor marca a hora em que a pergunta abriu e confere a resposta (ver supabase/migrations).
 
+/** Duração do anúncio do patrocinador: 15 ou 30 segundos (escolhida no cadastro). */
+const duracaoAnuncio = (p) => ((p?.duracao_segundos ?? DURACOES.anuncioPergunta) > 15 ? 30 : 15)
+
 /** Fim do tempo para confirmar: o encerramento da rodada automática (null se não tiver relógio). */
 function fimDaEntrada(rodada) {
   const fim = rodada.modo === 'automatico' ? instanteRodada(rodada.data, rodada.horario_fim) : null
@@ -35,8 +38,9 @@ export default function Rodada({ aoSair }) {
   const [resultado, setResultado] = useState(null)
   const [erro, setErro] = useState('')
 
-  // Patrocinadores dos dois anúncios: escolhidos pelo servidor quando a rodada entrou no ar (rodízio com peso,
-  // iguais para todos os ouvintes). Sem essa escolha (banco antigo), usa a posição da rodada no rodízio.
+  // Patrocinadores dos dois anúncios: vêm da grade de inserções quando a rodada entra no ar (iguais para todos
+  // os ouvintes). Posição vaga na grade = sem anúncio naquele momento.
+  // Banco antigo (sem essas colunas): usa a posição da rodada no rodízio.
   const [patrocinador1, patrocinador2] = useMemo(() => {
     const porId = (id) => patrocinadores.find((p) => p.id === id) ?? null
     const reserva = (espaco, desloca) => {
@@ -44,10 +48,8 @@ export default function Rodada({ aoSair }) {
       const i = Math.max(0, rodadas.findIndex((r) => r.id === rodada?.id))
       return seq.length ? seq[(i + desloca) % seq.length] : null
     }
-    return [
-      rodada?.patrocinador_pergunta ? porId(rodada.patrocinador_pergunta) : reserva('anuncio_pergunta', 0),
-      rodada?.patrocinador_resultado ? porId(rodada.patrocinador_resultado) : reserva('anuncio_resultado', 1),
-    ]
+    const daRodada = (campo, espaco, desloca) => (rodada && campo in rodada ? porId(rodada[campo]) : reserva(espaco, desloca))
+    return [daRodada('patrocinador_pergunta', 'anuncio_pergunta', 0), daRodada('patrocinador_resultado', 'anuncio_resultado', 1)]
   }, [patrocinadores, rodadas, rodada])
 
   if (!rodada)
@@ -69,8 +71,8 @@ export default function Rodada({ aoSair }) {
 
   // "Vou participar": o anúncio começa no próprio toque (é o que libera o som, inclusive no iPhone).
   // A pergunta abre para todos no mesmo instante: fim do tempo da rodada + duração do anúncio.
-  // Tempos fixos dos espaços: 15 s antes de responder e 30 s depois (o vídeo mais longo é cortado)
-  const segundosAnuncio1 = curto ?? DURACOES.anuncioPergunta
+  // Cada anunciante tem anúncio de 15 ou 30 s (o vídeo mais longo é cortado); sem anunciante, sem espera
+  const segundosAnuncio1 = patrocinador1 ? (curto ?? duracaoAnuncio(patrocinador1)) : 0
   const participar = () => {
     liberarVideos() // precisa ser no próprio toque, antes de qualquer espera
     const agora = agoraServidor().getTime()
@@ -148,7 +150,7 @@ export default function Rodada({ aoSair }) {
         <Enviada
           aoConferir={() => {
             liberarVideos()
-            setEtapa('anuncio2')
+            setEtapa(patrocinador2 ? 'anuncio2' : 'resultado')
           }}
         />
       )}
@@ -156,7 +158,7 @@ export default function Rodada({ aoSair }) {
         <Anuncio
           key="a2"
           ativo={etapa === 'anuncio2'}
-          segundos={curto ?? DURACOES.anuncioGabarito}
+          segundos={curto ?? duracaoAnuncio(patrocinador2)}
           espaco="anuncio_resultado"
           patrocinador={patrocinador2}
           aoTerminar={() => setEtapa('resultado')}
@@ -328,7 +330,7 @@ function Anuncio({ ativo, espaco, segundos, ate, patrocinador, aoTerminar, titul
           <ContagemAnuncio segundos={segundos} aoTerminar={terminar} titulo={titulo} texto={texto} cor={cor} />
         ))}
       <div className="flex flex-1 flex-col justify-center gap-2 py-3">
-        {videoAcabou ? (
+        {videoAcabou || !patrocinador ? (
           <div className="rounded-3xl bg-white p-8 text-center ring-2 ring-slate-200">
             <Loader2 className="mx-auto animate-spin text-marca-600" size={40} />
             <p className="mt-4 text-2xl font-extrabold text-slate-900">Prepare-se!</p>

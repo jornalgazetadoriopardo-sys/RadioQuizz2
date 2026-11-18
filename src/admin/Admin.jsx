@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  BarChart3, Bell, Clock, Dices, Send, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
+  BarChart3, Bell, CalendarDays, Clock, Dices, Send, Download, Gift, History, Search, ImagePlus, ListChecks, Loader2, LogOut, Megaphone, MessageSquare, Plus, Radio, RadioTower, RotateCcw, Save,
   Check, ShieldAlert, Square, Trash2, Trophy, Users, Eye, EyeOff, MessageCircle, Zap,
 } from 'lucide-react'
 import { NIVEIS } from '../config.js'
@@ -12,12 +12,14 @@ import { DetalheParticipacao, SeloSituacao, fmtDataHora, situacao } from '../his
 import { Avatar, Card, Selo, Vazio } from '../ui.jsx'
 import { Botao, Campo, Numero, Secao, Texto, enviarImagem, inputCls, reduzirFoto, useTabela } from './comum.jsx'
 import Patrocinadores from './Patrocinadores.jsx'
+import Grade from './Grade.jsx'
 import { ESPACOS } from '../anuncios.jsx'
 
 const ABAS = [
   { id: 'aovivo', grupo: 'Programa', nome: 'Ao vivo', icone: RadioTower, descricao: 'Solte as perguntas no ar e acompanhe as respostas em tempo real.', cor: 'bg-marca-100 text-marca-600' },
   { id: 'rodadas', grupo: 'Conteúdo', nome: 'Rodadas', icone: ListChecks, descricao: 'Perguntas, horários, pontos e agendamento de cada rodada.', cor: 'bg-violet-100 text-violet-600' },
   { id: 'patrocinadores', grupo: 'Conteúdo', nome: 'Patrocinadores', icone: Megaphone, descricao: 'Vídeos do YouTube e banners, com rodízio ou horário fixo e período de circulação.', cor: 'bg-ouro-100 text-ouro-600' },
+  { id: 'grade', grupo: 'Conteúdo', nome: 'Grade', icone: CalendarDays, descricao: 'Grade de inserções dos patrocinadores: o que vai ao ar em cada dia e horário.', cor: 'bg-marca-100 text-marca-700' },
   { id: 'exibicoes', grupo: 'Conteúdo', nome: 'Exibições', icone: BarChart3, descricao: 'Quantas vezes cada patrocinador apareceu em cada espaço.', cor: 'bg-sky-100 text-sky-600' },
   { id: 'premios', grupo: 'Conteúdo', nome: 'Prêmios', icone: Gift, descricao: 'O que os primeiros colocados do ranking ganham.', cor: 'bg-emerald-100 text-emerald-600' },
   { id: 'ranking', grupo: 'Ouvintes', nome: 'Ranking', icone: Trophy, descricao: 'Classificação dos ouvintes pelos pontos.', cor: 'bg-ouro-100 text-ouro-600' },
@@ -181,6 +183,7 @@ function Painel() {
           {aba === 'historico' && <HistoricoAdmin />}
           {aba === 'cadastros' && <CadastrosAdmin />}
           {aba === 'exibicoes' && <ExibicoesAdmin />}
+          {aba === 'grade' && <Grade />}
           {aba === 'avisos' && <AvisosAdmin />}
           {aba === 'feedback' && <FeedbackAdmin />}
         </div>
@@ -467,10 +470,10 @@ function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
           <p className="text-sm text-slate-500">
             {rodada.nivel} • vale {fmt(rodada.pontos)} pts • {rodada.tempo_resposta}s para responder
           </p>
-          {(rodada.patrocinador_pergunta || rodada.patrocinador_resultado) && (
+          {'patrocinador_pergunta' in rodada && (
             <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
-              <Megaphone size={14} className="text-ouro-600" /> Anúncios: <b>{nomePatrocinador(rodada.patrocinador_pergunta) ?? '—'}</b> antes da pergunta e{' '}
-              <b>{nomePatrocinador(rodada.patrocinador_resultado) ?? '—'}</b> antes do resultado
+              <Megaphone size={14} className="text-ouro-600" /> Anúncios: <b>{nomePatrocinador(rodada.patrocinador_pergunta) ?? 'sem anúncio'}</b> antes de responder e{' '}
+              <b>{nomePatrocinador(rodada.patrocinador_resultado) ?? 'sem anúncio'}</b> depois
             </p>
           )}
         </div>
@@ -730,8 +733,9 @@ function ImagemPergunta({ url, aoMudar }) {
   )
 }
 
-// As perguntas são diárias, a cada meia hora, a partir das 9h
+// As perguntas são diárias, a cada meia hora, das 9h às 18h (a mesma grade dos patrocinadores)
 const PRIMEIRA_RODADA = '09:00:00'
+const ULTIMA_RODADA = '18:00:00'
 const INTERVALO_RODADAS_MIN = 30
 
 /** Próximo horário livre na grade (9h, 9h30, 10h…), de hoje em diante, com o mesmo tempo no ar da última rodada. */
@@ -742,7 +746,7 @@ function proximaVaga(rodadas = []) {
   const agora = horaSP()
   let dia = hojeSP()
   for (let d = 0; d < 60; d++) {
-    for (let m = 0; segundosEntre('00:00:00', PRIMEIRA_RODADA) + m * 60 < 24 * 3600; m += INTERVALO_RODADAS_MIN) {
+    for (let m = 0; segundosEntre('00:00:00', PRIMEIRA_RODADA) + m * 60 <= segundosEntre('00:00:00', ULTIMA_RODADA); m += INTERVALO_RODADAS_MIN) {
       const horario = somarSegundos(PRIMEIRA_RODADA, m * 60)
       if (d === 0 && horario.slice(0, 5) <= agora) continue
       if (!ocupados.has(`${dia} ${horario}`)) return { data: dia, horario, horario_fim: somarSegundos(horario, noAr > 0 ? noAr : 45) }
