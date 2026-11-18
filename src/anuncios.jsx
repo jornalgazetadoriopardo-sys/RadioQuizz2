@@ -526,9 +526,9 @@ export function PecaAnuncio({ p, comSom = false, tocar = true, aoTerminarVideo, 
 /* ---------- espaços e rodízio ---------- */
 
 export const ESPACOS = [
-  { id: 'anuncio_pergunta', nome: '15 s antes de responder', texto: 'Vídeo ou banners depois de "Vou participar".' },
-  { id: 'anuncio_resultado', nome: '30 s depois de responder', texto: 'Vídeo ou banners depois de "Confira sua resposta".' },
-  { id: 'banner_inicio', nome: 'Banner da tela inicial', texto: 'O banner que gira na tela inicial do app.' },
+  { id: 'anuncio_pergunta', nome: 'Antes de responder', texto: 'Vídeo ou banners depois de "Vou participar".' },
+  { id: 'anuncio_resultado', nome: 'Depois de responder', texto: 'Vídeo ou banners depois de "Confira sua resposta".' },
+  { id: 'banner_inicio', nome: 'Banner home', texto: 'O banner da tela inicial do app.' },
   { id: 'banner_espera', nome: 'Banner das telas de espera', texto: 'A faixa embaixo das telas de espera e do resultado.' },
 ]
 
