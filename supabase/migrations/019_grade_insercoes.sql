@@ -202,6 +202,7 @@ end
 $$;
 
 -- Relatório de inserções (todos ou um patrocinador), passadas e futuras
+drop function if exists public.relatorio_insercoes(date, date, uuid); -- o 020 muda as colunas
 create or replace function public.relatorio_insercoes(p_de date, p_ate date, p_patrocinador uuid default null)
 returns table (data date, horario text, posicao text, origem text, patrocinador_id uuid, nome text, situacao text)
 language plpgsql stable security definer set search_path = public

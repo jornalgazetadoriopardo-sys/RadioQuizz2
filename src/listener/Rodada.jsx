@@ -38,17 +38,18 @@ export default function Rodada({ aoSair }) {
   const [resultado, setResultado] = useState(null)
   const [erro, setErro] = useState('')
 
-  // Patrocinadores dos dois anúncios: vêm da grade de inserções quando a rodada entra no ar (iguais para todos
-  // os ouvintes). Posição vaga na grade = sem anúncio naquele momento.
+  // Anúncios de cada momento (até 2 antes e 2 depois de responder, somando no máximo 30 s): vêm da grade de
+  // inserções quando a rodada entra no ar (iguais para todos os ouvintes). Posição vaga na grade = sem anúncio.
   // Banco antigo (sem essas colunas): usa a posição da rodada no rodízio.
-  const [patrocinador1, patrocinador2] = useMemo(() => {
+  const [anuncios1, anuncios2] = useMemo(() => {
     const porId = (id) => patrocinadores.find((p) => p.id === id) ?? null
     const reserva = (espaco, desloca) => {
       const seq = sequenciaPonderada(patrocinadoresDoEspaco(patrocinadores, espaco))
       const i = Math.max(0, rodadas.findIndex((r) => r.id === rodada?.id))
-      return seq.length ? seq[(i + desloca) % seq.length] : null
+      return seq.length ? [seq[(i + desloca) % seq.length]] : []
     }
-    const daRodada = (campo, espaco, desloca) => (rodada && campo in rodada ? porId(rodada[campo]) : reserva(espaco, desloca))
+    const daRodada = (campo, espaco, desloca) =>
+      rodada && campo in rodada ? [rodada[campo], rodada[`${campo}2`]].map(porId).filter(Boolean) : reserva(espaco, desloca)
     return [daRodada('patrocinador_pergunta', 'anuncio_pergunta', 0), daRodada('patrocinador_resultado', 'anuncio_resultado', 1)]
   }, [patrocinadores, rodadas, rodada])
 
@@ -71,8 +72,9 @@ export default function Rodada({ aoSair }) {
 
   // "Vou participar": o anúncio começa no próprio toque (é o que libera o som, inclusive no iPhone).
   // A pergunta abre para todos no mesmo instante: fim do tempo da rodada + duração do anúncio.
-  // Cada anunciante tem anúncio de 15 ou 30 s (o vídeo mais longo é cortado); sem anunciante, sem espera
-  const segundosAnuncio1 = patrocinador1 ? (curto ?? duracaoAnuncio(patrocinador1)) : 0
+  // Cada anúncio tem 15 ou 30 s (o vídeo mais longo é cortado); dois de 15 s tocam em sequência; sem anúncio, sem espera
+  const duracao = (p) => curto ?? duracaoAnuncio(p)
+  const segundosAnuncio1 = anuncios1.reduce((t, p) => t + duracao(p), 0)
   const participar = () => {
     liberarVideos() // precisa ser no próprio toque, antes de qualquer espera
     const agora = agoraServidor().getTime()
@@ -124,7 +126,8 @@ export default function Rodada({ aoSair }) {
           ativo={etapa === 'anuncio1'}
           ate={abrePergunta}
           espaco="anuncio_pergunta"
-          patrocinador={patrocinador1}
+          pecas={anuncios1}
+          duracao={duracao}
           aoTerminar={abrirPergunta}
           titulo="Fique nesta tela"
           texto="A pergunta abre para todos ao mesmo tempo."
@@ -150,7 +153,7 @@ export default function Rodada({ aoSair }) {
         <Enviada
           aoConferir={() => {
             liberarVideos()
-            setEtapa(patrocinador2 ? 'anuncio2' : 'resultado')
+            setEtapa(anuncios2.length ? 'anuncio2' : 'resultado')
           }}
         />
       )}
@@ -158,9 +161,10 @@ export default function Rodada({ aoSair }) {
         <Anuncio
           key="a2"
           ativo={etapa === 'anuncio2'}
-          segundos={curto ?? duracaoAnuncio(patrocinador2)}
+          segundos={anuncios2.reduce((t, p) => t + duracao(p), 0)}
           espaco="anuncio_resultado"
-          patrocinador={patrocinador2}
+          pecas={anuncios2}
+          duracao={duracao}
           aoTerminar={() => setEtapa('resultado')}
           titulo="Já vem o resultado!"
           texto="Depois deste anúncio você vê se acertou."
@@ -305,22 +309,43 @@ function BotaoGrande({ className = 'bg-marca-700 text-white', children, ...props
 }
 
 /**
- * Anúncio entre as etapas. Fica montado (escondido) desde a etapa anterior para o vídeo já estar carregado
- * quando chegar a vez dele; a contagem só começa quando `ativo`.
+ * Anúncio entre as etapas: 1 ou 2 peças (dois de 15 s tocam em sequência, já com som).
+ * Fica montado (escondido) desde a etapa anterior para os vídeos já estarem carregados — e liberados para tocar
+ * com som no toque em "Vou participar" / "Confira sua resposta" — quando chegar a vez deles; a contagem só começa
+ * quando `ativo`. Cada peça tem o seu tempo (15 ou 30 s): passa para a seguinte quando o vídeo acaba ou o tempo dela
+ * termina, o que vier primeiro.
  */
-function Anuncio({ ativo, espaco, segundos, ate, patrocinador, aoTerminar, titulo, texto, cor }) {
+function Anuncio({ ativo, espaco, segundos, ate, pecas, duracao, aoTerminar, titulo, texto, cor }) {
+  const [atual, setAtual] = useState(0)
+  const [acabaram, setAcabaram] = useState(false) // todas as peças já passaram (com `ate`, aguarda a hora)
+  const peca = pecas[atual]
   useEffect(() => {
-    if (ativo) contarExibicao(patrocinador?.id, espaco)
-  }, [ativo, patrocinador?.id, espaco])
-  // Com `segundos`: termina no fim da contagem ou quando o vídeo acabar, o que vier primeiro.
-  // Com `ate`: termina na hora marcada (relógio do servidor), igual para todos; se o vídeo acabar antes, aguarda.
+    if (ativo && peca) contarExibicao(peca.id, espaco)
+  }, [ativo, peca, espaco])
+  // Com `segundos`: termina no fim da contagem ou quando a última peça acabar, o que vier primeiro.
+  // Com `ate`: termina na hora marcada (relógio do servidor), igual para todos; se as peças acabarem antes, aguarda.
   const terminou = useRef(false)
-  const [videoAcabou, setVideoAcabou] = useState(false)
   const terminar = () => {
     if (terminou.current || !ativo) return
     terminou.current = true
     aoTerminar()
   }
+  const proxima = () => {
+    if (!ativo || acabaram) return
+    if (atual + 1 < pecas.length) setAtual(atual + 1)
+    else if (ate) setAcabaram(true)
+    else terminar()
+  }
+  const proximaRef = useRef(proxima)
+  proximaRef.current = proxima
+  // tempo de cada peça (15 ou 30 s), a partir de quando ela começou
+  const segundosDaPeca = peca ? duracao(peca) : 0
+  useEffect(() => {
+    if (!ativo || !segundosDaPeca || acabaram) return
+    const t = setTimeout(() => proximaRef.current(), segundosDaPeca * 1000)
+    return () => clearTimeout(t)
+  }, [ativo, atual, acabaram, segundosDaPeca])
+
   return (
     <div className={ativo ? 'flex min-h-full flex-col animate-fade-up' : 'hidden'} aria-hidden={!ativo}>
       {ativo &&
@@ -330,19 +355,22 @@ function Anuncio({ ativo, espaco, segundos, ate, patrocinador, aoTerminar, titul
           <ContagemAnuncio segundos={segundos} aoTerminar={terminar} titulo={titulo} texto={texto} cor={cor} />
         ))}
       <div className="flex flex-1 flex-col justify-center gap-2 py-3">
-        {videoAcabou || !patrocinador ? (
+        {(acabaram || !pecas.length) && (
           <div className="rounded-3xl bg-white p-8 text-center ring-2 ring-slate-200">
             <Loader2 className="mx-auto animate-spin text-marca-600" size={40} />
             <p className="mt-4 text-2xl font-extrabold text-slate-900">Prepare-se!</p>
             <p className="mt-1 text-lg text-slate-700">A pergunta já vai abrir.</p>
             <BannerEspera />
           </div>
-        ) : (
-          <>
-            <p className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">Anúncio</p>
-            <PecaAnuncio p={patrocinador} comSom tocar={ativo} aoTerminarVideo={ate ? () => ativo && setVideoAcabou(true) : terminar} />
-          </>
         )}
+        {pecas.map((p, i) => (
+          <div key={`${i}-${p.id}`} className={!acabaram && i === atual ? 'flex flex-col gap-2' : 'hidden'}>
+            <p className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">
+              Anúncio{pecas.length > 1 ? ` ${i + 1} de ${pecas.length}` : ''}
+            </p>
+            <PecaAnuncio p={p} comSom tocar={ativo && !acabaram && i === atual} aoTerminarVideo={() => i === atual && proximaRef.current()} />
+          </div>
+        ))}
       </div>
     </div>
   )

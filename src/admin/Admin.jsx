@@ -449,6 +449,8 @@ function DiagnosticoAgendamento() {
 function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
   const { patrocinadores } = useDados()
   const nomePatrocinador = (id) => patrocinadores.find((p) => p.id === id)?.nome
+  // até 2 anúncios em cada momento (ex.: "Loja A + Loja B")
+  const nomesAnuncios = (a, b) => [a, b].map(nomePatrocinador).filter(Boolean).join(' + ') || 'sem anúncio'
   const abriram = respostas.length
   const responderam = respostas.filter((r) => r.respondida_em)
   const acertos = responderam.filter((r) => r.acertou).length
@@ -472,8 +474,8 @@ function PlacarAoVivo({ rodada, respostas, conteudo, encerrar, ocupado }) {
           </p>
           {'patrocinador_pergunta' in rodada && (
             <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
-              <Megaphone size={14} className="text-ouro-600" /> Anúncios: <b>{nomePatrocinador(rodada.patrocinador_pergunta) ?? 'sem anúncio'}</b> antes de responder e{' '}
-              <b>{nomePatrocinador(rodada.patrocinador_resultado) ?? 'sem anúncio'}</b> depois
+              <Megaphone size={14} className="text-ouro-600" /> Anúncios: <b>{nomesAnuncios(rodada.patrocinador_pergunta, rodada.patrocinador_pergunta2)}</b> antes de responder e{' '}
+              <b>{nomesAnuncios(rodada.patrocinador_resultado, rodada.patrocinador_resultado2)}</b> depois
             </p>
           )}
         </div>

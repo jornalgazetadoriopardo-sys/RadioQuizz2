@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowRightLeft, CalendarDays, ChevronLeft, ChevronRight, Download, FileText, Loader2, Lock, Printer, Search, Sparkles, X } from 'lucide-react'
 import { mensagemDeErro, supabase } from '../supabase.js'
 import { hojeSP } from '../store.jsx'
@@ -7,6 +8,7 @@ import { Carregando } from '../auth.jsx'
 import { Botao, Campo, inputCls } from './comum.jsx'
 
 // Grade de inserções: todos os dias, das 9h às 18h, de meia em meia hora, com 2 posições por horário
+// (antes e depois de responder). Cada posição tem 30 s: dois anúncios de 15 s (1ª e 2ª parte) ou um de 30 s.
 export const HORARIOS_GRADE = Array.from({ length: 19 }, (_, i) => {
   const m = 9 * 60 + i * 30
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
@@ -44,6 +46,9 @@ const SITUACAO = {
   programada: { nome: 'Programada', cor: 'bg-sky-100 text-sky-800' },
 }
 const ORIGEM = { auto: 'Automática', manual: 'Manual', fixo: 'Fixa' }
+// Duração do anúncio do anunciante: 15 ou 30 s (sem duração no cadastro = 15)
+const segundosDe = (p) => ((p?.duracao_segundos ?? 15) > 15 ? 30 : 15)
+const PARTES = [1, 2]
 
 export default function Grade() {
   const [aba, setAba] = useState('grade')
@@ -51,7 +56,7 @@ export default function Grade() {
   useEffect(() => {
     supabase
       .from('patrocinadores')
-      .select('id, nome, ativo, inicio, fim, modalidade, espacos, horarios_fixos')
+      .select('id, nome, ativo, inicio, fim, modalidade, espacos, horarios_fixos, duracao_segundos')
       .order('nome')
       .then(({ data }) => setPatrocinadores(data ?? []))
   }, [])
@@ -84,7 +89,7 @@ function GradeMes({ patrocinadores }) {
   const [mes, setMes] = useState(() => hojeSP().slice(0, 7))
   const [itens, setItens] = useState(null)
   const [erro, setErro] = useState('')
-  const [editando, setEditando] = useState(null) // { data, horario, posicao, item }
+  const [editando, setEditando] = useState(null) // { data, horario, posicao, parte, item, outro }
   const [programando, setProgramando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const dias = diasDoMes(mes)
@@ -93,7 +98,7 @@ function GradeMes({ patrocinadores }) {
   const carregar = useCallback(async () => {
     const { data, error } = await supabase
       .from('grade_insercoes')
-      .select('id, data, horario, posicao, patrocinador_id, origem, veiculada_em')
+      .select('id, data, horario, posicao, parte, patrocinador_id, origem, veiculada_em')
       .gte('data', `${mes}-01`)
       .lte('data', ultimo(diasDoMes(mes)))
     if (error) return setErro(mensagemDeErro(error))
@@ -107,7 +112,7 @@ function GradeMes({ patrocinadores }) {
 
   const celula = useMemo(() => {
     const m = new Map()
-    for (const i of itens ?? []) m.set(`${i.data} ${i.horario} ${i.posicao}`, i)
+    for (const i of itens ?? []) m.set(`${i.data} ${i.horario} ${i.posicao} ${i.parte ?? 1}`, i)
     return m
   }, [itens])
 
@@ -144,8 +149,8 @@ function GradeMes({ patrocinadores }) {
       </Card>
 
       <p className="text-sm leading-relaxed text-slate-600">
-        Cada horário tem duas inserções: <b>antes</b> e <b>depois</b> de responder. Clique numa inserção para trocar o anunciante, mover para outro dia
-        ou horário, ou deixar vaga. As <Lock size={13} className="inline" /> fixas seguem o cadastro do anunciante e não mudam por aqui. "Programar vagas"
+        Cada horário tem duas posições: <b>antes</b> e <b>depois</b> de responder. Cada posição tem 30 segundos: dois anúncios de 15 s, que tocam um depois
+        do outro, ou um de 30 s, que ocupa a posição inteira. Clique numa inserção para trocar o anunciante, mover para outro dia ou horário, ou deixar vaga. As <Lock size={13} className="inline" /> fixas seguem o cadastro do anunciante e não mudam por aqui. "Programar vagas"
         só preenche posições vazias: nada do que já está na grade muda sozinho.
       </p>
 
@@ -197,22 +202,33 @@ function GradeMes({ patrocinadores }) {
                     {dias.map((d) => (
                       <td key={d} className={`border-b border-r border-slate-100 p-0.5 align-top ${passou(d, h) ? 'bg-slate-50' : ''}`}>
                         {POSICOES.map((pos) => {
-                          const item = celula.get(`${d} ${h} ${pos.id}`)
-                          const p = item && porId[item.patrocinador_id]
+                          const partes = PARTES.map((n) => celula.get(`${d} ${h} ${pos.id} ${n}`))
                           const antigo = passou(d, h)
+                          // anúncio de 30 s ocupa a posição inteira: um botão só, da altura das duas partes
+                          const inteiro = partes.find((it) => it && segundosDe(porId[it.patrocinador_id]) === 30)
+                          const botao = (item, parte, alto) => {
+                            const p = item && porId[item.patrocinador_id]
+                            const outro = partes[parte === 1 ? 1 : 0]
+                            return (
+                              <button
+                                key={parte}
+                                type="button"
+                                title={`${fmtData(d)} ${h} · ${pos.nome}${alto ? '' : ` · ${parte}ª parte`}${p ? ` · ${p.nome} (${segundosDe(p)} s)` : ' · vago'}${item?.origem === 'fixo' ? ' (fixo)' : ''}`}
+                                onClick={() => setEditando({ data: d, horario: h, posicao: pos.id, parte: item?.parte ?? parte, item, outro: outro && outro !== item ? outro : null })}
+                                className={`flex w-[76px] items-center gap-0.5 truncate rounded px-1 text-left text-[11px] font-semibold transition ${alto ? 'h-[42px]' : 'h-5'} ${
+                                  p ? `${corDe(p.id)} text-white hover:brightness-110` : 'border border-dashed border-slate-200 text-slate-300 hover:border-marca-300 hover:text-marca-400'
+                                } ${antigo ? 'opacity-50' : ''} ${p && (!p.ativo || (p.fim && p.fim < d)) ? 'line-through' : ''}`}
+                              >
+                                {item?.origem === 'fixo' && <Lock size={10} className="shrink-0" />}
+                                <span className="truncate">{p ? p.nome : `${pos.curto} ${parte}`}</span>
+                                {alto && <span className="ml-auto shrink-0 rounded bg-white/25 px-0.5 text-[9px]">30s</span>}
+                              </button>
+                            )
+                          }
                           return (
-                            <button
-                              key={pos.id}
-                              type="button"
-                              title={`${fmtData(d)} ${h} · ${pos.nome}${p ? ` · ${p.nome}` : ' · vago'}${item?.origem === 'fixo' ? ' (fixo)' : ''}`}
-                              onClick={() => setEditando({ data: d, horario: h, posicao: pos.id, item })}
-                              className={`mb-0.5 flex h-6 w-[68px] items-center gap-0.5 truncate rounded px-1 text-left text-[11px] font-semibold transition ${
-                                p ? `${corDe(p.id)} text-white hover:brightness-110` : 'border border-dashed border-slate-200 text-slate-300 hover:border-marca-300 hover:text-marca-400'
-                              } ${antigo ? 'opacity-50' : ''} ${p && (!p.ativo || (p.fim && p.fim < d)) ? 'line-through' : ''}`}
-                            >
-                              {item?.origem === 'fixo' && <Lock size={10} className="shrink-0" />}
-                              <span className="truncate">{p ? p.nome : pos.curto}</span>
-                            </button>
+                            <div key={pos.id} className={`flex flex-col gap-0.5 ${pos.id === 'antes' ? 'mb-1 border-b border-slate-100 pb-1' : ''}`}>
+                              {inteiro ? botao(inteiro, inteiro.parte ?? 1, true) : PARTES.map((n, k) => botao(partes[k], n, false))}
+                            </div>
                           )
                         })}
                       </td>
@@ -242,9 +258,9 @@ function GradeMes({ patrocinadores }) {
 }
 
 function EditarInsercao({ alvo, patrocinadores, fechar, aoSalvar }) {
-  const { data, horario, posicao, item } = alvo
+  const { data, horario, posicao, parte, item, outro } = alvo
   const [escolhido, setEscolhido] = useState(item?.patrocinador_id ?? '')
-  const [destino, setDestino] = useState({ data, horario, posicao })
+  const [destino, setDestino] = useState({ data, horario, posicao, parte })
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
   const fixo = item?.origem === 'fixo'
@@ -252,6 +268,10 @@ function EditarInsercao({ alvo, patrocinadores, fechar, aoSalvar }) {
   const espaco = posicao === 'antes' ? 'anuncio_pergunta' : 'anuncio_resultado'
   const opcoes = patrocinadores.filter((p) => p.id === item?.patrocinador_id || (p.ativo && (!p.fim || p.fim >= data) && (!p.espacos || p.espacos.includes(espaco))))
   const nome = (id) => patrocinadores.find((p) => p.id === id)?.nome ?? '—'
+  const porId = (id) => patrocinadores.find((p) => p.id === id)
+  const inteiro = item && segundosDe(porId(item.patrocinador_id)) === 30
+  // 30 s só cabe com a outra parte vaga; 15 s não cabe ao lado de outro anúncio de 30 s
+  const naoCabe = (p) => (segundosDe(p) === 30 && outro) || p.id === outro?.patrocinador_id
 
   const executar = async (fn) => {
     setOcupado(true)
@@ -262,11 +282,13 @@ function EditarInsercao({ alvo, patrocinadores, fechar, aoSalvar }) {
     aoSalvar()
     fechar()
   }
-  const salvar = () => executar(() => supabase.rpc('grade_definir', { p_data: data, p_horario: horario, p_posicao: posicao, p_patrocinador: escolhido || null }))
-  const mover = () => executar(() => supabase.rpc('grade_mover', { p_id: item.id, p_data: destino.data, p_horario: destino.horario, p_posicao: destino.posicao }))
+  const salvar = () => executar(() => supabase.rpc('grade_definir', { p_data: data, p_horario: horario, p_posicao: posicao, p_patrocinador: escolhido || null, p_parte: parte }))
+  const mover = () =>
+    executar(() => supabase.rpc('grade_mover', { p_id: item.id, p_data: destino.data, p_horario: destino.horario, p_posicao: destino.posicao, p_parte: inteiro ? 1 : Number(destino.parte) }))
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={fechar}>
+  // na raiz da página: dentro do painel (que tem animação) a janela ficaria presa à área da aba
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4" onClick={fechar}>
       <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -274,7 +296,9 @@ function EditarInsercao({ alvo, patrocinadores, fechar, aoSalvar }) {
             <h3 className="font-display text-2xl text-marca-800">
               {fmtData(data)} · {horario.replace(':', 'h')}
             </h3>
-            <p className="text-base text-slate-600">{POSICOES.find((p) => p.id === posicao).nome}</p>
+            <p className="text-base text-slate-600">
+              {POSICOES.find((p) => p.id === posicao).nome} · {inteiro ? 'posição inteira (anúncio de 30 s)' : `${parte}ª parte`}
+            </p>
           </div>
           <button type="button" onClick={fechar} className="grid h-10 w-10 place-items-center rounded-full hover:bg-slate-100" title="Fechar">
             <X size={20} />
@@ -295,13 +319,19 @@ function EditarInsercao({ alvo, patrocinadores, fechar, aoSalvar }) {
               <select value={escolhido} onChange={(e) => setEscolhido(e.target.value)} className={inputCls}>
                 <option value="">— Deixar vago (sem anúncio) —</option>
                 {opcoes.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                    {p.modalidade === 'fixo' ? ' (fixo em outros horários)' : ''}
+                  <option key={p.id} value={p.id} disabled={naoCabe(p)}>
+                    {p.nome} · {segundosDe(p)} s{p.modalidade === 'fixo' ? ' (fixo em outros horários)' : ''}
+                    {naoCabe(p) ? (p.id === outro?.patrocinador_id ? ' — já está na outra parte' : ' — não cabe: a outra parte está ocupada') : ''}
                   </option>
                 ))}
               </select>
             </Campo>
+            {outro && (
+              <p className="-mt-2 text-sm text-slate-600">
+                Na outra parte desta posição: <b>{nome(outro.patrocinador_id)}</b> ({segundosDe(porId(outro.patrocinador_id))} s). Os dois tocam um depois do outro.
+                Um anúncio de 30 s só cabe com a outra parte vaga.
+              </p>
+            )}
             <Botao className="w-full" onClick={salvar} disabled={ocupado || escolhido === (item?.patrocinador_id ?? '')}>
               {ocupado ? <Loader2 size={18} className="animate-spin" /> : null} Salvar nesta posição
             </Botao>
@@ -311,7 +341,7 @@ function EditarInsercao({ alvo, patrocinadores, fechar, aoSalvar }) {
                 <p className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800">
                   <ArrowRightLeft size={18} /> Mover esta inserção para outro dia ou horário
                 </p>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className={`grid gap-3 ${inteiro ? 'sm:grid-cols-3' : 'sm:grid-cols-4'}`}>
                   <Campo rotulo="Dia">
                     <input type="date" value={destino.data} onChange={(e) => setDestino({ ...destino, data: e.target.value })} className={inputCls} />
                   </Campo>
@@ -331,9 +361,22 @@ function EditarInsercao({ alvo, patrocinadores, fechar, aoSalvar }) {
                       ))}
                     </select>
                   </Campo>
+                  {!inteiro && (
+                    <Campo rotulo="Parte">
+                      <select value={destino.parte} onChange={(e) => setDestino({ ...destino, parte: Number(e.target.value) })} className={inputCls}>
+                        {PARTES.map((n) => (
+                          <option key={n} value={n}>
+                            {n}ª
+                          </option>
+                        ))}
+                      </select>
+                    </Campo>
+                  )}
                 </div>
-                <p className="mt-2 text-sm text-slate-500">Se o destino já tiver outra inserção (não fixa), as duas trocam de lugar.</p>
-                <Botao variante="escuro" className="mt-3 w-full" onClick={mover} disabled={ocupado || (destino.data === data && destino.horario === horario && destino.posicao === posicao)}>
+                <p className="mt-2 text-sm text-slate-500">
+                  Se o destino já tiver outra inserção (não fixa), as duas trocam de lugar. {inteiro ? 'Anúncio de 30 s precisa de uma posição inteira vaga.' : ''}
+                </p>
+                <Botao variante="escuro" className="mt-3 w-full" onClick={mover} disabled={ocupado || (destino.data === data && destino.horario === horario && destino.posicao === posicao && (inteiro || destino.parte === parte))}>
                   <ArrowRightLeft size={18} /> Mover
                 </Botao>
               </div>
@@ -342,7 +385,8 @@ function EditarInsercao({ alvo, patrocinadores, fechar, aoSalvar }) {
         )}
         {erro && <p className="mt-4 text-sm font-semibold text-red-600">{erro}</p>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -389,8 +433,17 @@ function Relatorios({ patrocinadores }) {
   const nomeQuem = quem ? patrocinadores.find((p) => p.id === quem)?.nome : 'Todos os anunciantes'
   const periodo = `${fmtData(de)} a ${fmtData(ate)}`
 
-  const colunasLista = ['Data', 'Dia', 'Horário', 'Posição', 'Anunciante', 'Tipo', 'Situação']
-  const valoresLista = (l) => [fmtData(l.data), SEMANA_LONGA[diaDaSemana(l.data)], l.horario, l.posicao === 'antes' ? 'Antes de responder' : 'Depois de responder', l.nome, ORIGEM[l.origem], SITUACAO[l.situacao].nome]
+  const colunasLista = ['Data', 'Dia', 'Horário', 'Posição', 'Anunciante', 'Duração', 'Tipo', 'Situação']
+  const valoresLista = (l) => [
+    fmtData(l.data),
+    SEMANA_LONGA[diaDaSemana(l.data)],
+    l.horario,
+    `${l.posicao === 'antes' ? 'Antes de responder' : 'Depois de responder'}${l.segundos === 30 ? '' : ` (${l.parte ?? 1}ª parte)`}`,
+    l.nome,
+    l.segundos ? `${l.segundos} s` : '',
+    ORIGEM[l.origem],
+    SITUACAO[l.situacao].nome,
+  ]
 
   const exportar = () => {
     const csv = [colunasLista, ...(linhas ?? []).map(valoresLista)].map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n')
@@ -508,7 +561,7 @@ function Relatorios({ patrocinadores }) {
                 </Card>
               )}
               <Card className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-base">
+                <table className="w-full min-w-[820px] text-base">
                   <thead>
                     <tr className="border-b border-slate-100 text-left text-sm text-slate-500">
                       {colunasLista.map((c) => (
@@ -523,7 +576,7 @@ function Relatorios({ patrocinadores }) {
                       const v = valoresLista(l)
                       return (
                         <tr key={i}>
-                          {v.slice(0, 6).map((c, j) => (
+                          {v.slice(0, 7).map((c, j) => (
                             <td key={j} className={`px-4 py-2.5 ${j === 4 ? 'font-semibold' : ''}`}>
                               {c}
                             </td>
