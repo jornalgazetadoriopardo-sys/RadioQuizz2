@@ -584,7 +584,10 @@ function OndeMostrar({ p, set }) {
             </button>
           ))}
         </div>
-        <p className="mt-1.5 text-sm text-slate-500">Vídeos mais longos que a duração são cortados.</p>
+        <p className="mt-1.5 text-sm text-slate-500">
+          Antes e depois de responder há 30 segundos de anúncio. Com <b>15 s</b>, o anúncio pode dividir o espaço com outro de 15 s (os dois tocam em
+          sequência, com som). Com <b>30 s</b>, ocupa o espaço inteiro, sem outro anunciante junto. Vídeos mais longos que a duração são cortados.
+        </p>
       </div>
     </div>
   )

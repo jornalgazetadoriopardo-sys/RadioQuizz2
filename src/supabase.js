@@ -21,6 +21,11 @@ const MENSAGENS = {
   'Error sending magic link email': 'Não foi possível enviar o e-mail de acesso. Tente entrar com senha ou fale com a produção.',
   'rate limit': 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.',
   'schema cache': 'O banco de dados ainda não tem esta atualização. Rode o script mais recente de supabase/migrations no SQL Editor (veja LEIA-ME-SUPABASE.md).',
+  sem_espaco_na_posicao: 'Não cabe: cada posição tem 30 segundos (dois anúncios de 15 s ou um de 30 s). Deixe a outra parte vaga ou escolha outro lugar.',
+  anunciante_repetido_na_posicao: 'Este anunciante já está na outra parte desta posição.',
+  posicao_fixa: 'Esta inserção é fixa: mude os horários fixos no cadastro do anunciante.',
+  destino_fixo: 'O destino tem uma inserção fixa. Escolha outro lugar.',
+  horario_passado: 'Este horário já passou.',
   'Anonymous sign-ins are disabled': 'O acesso de teste está desligado no momento.',
 }
 
